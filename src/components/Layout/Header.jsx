@@ -1,5 +1,5 @@
 import React from 'react';
-import { Bell, Search, User, Settings } from 'lucide-react';
+import { Bell, Search, Settings } from 'lucide-react';
 import { useApp } from '../../Context/AppContext';
 import { useAuth } from '../../hooks/useAuth';
 
@@ -56,7 +56,7 @@ const Header = () => {
                   {user.firstName} {user.lastName}
                 </p>
                 <p className="text-xs text-gray-500 capitalize">
-                  {user.role}
+                  {user?.role?.roleType}
                 </p>
               </div>
             </div>

@@ -1,59 +1,120 @@
-import React, { createContext, useState, useEffect } from 'react';
-// import { apiService } from '../services/api';
+import React, { createContext, useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { jwtDecode } from "jwt-decode";
 
+// Create the Auth context
 const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
+	const navigate = useNavigate();
 
-  useEffect(() => {
-    const storedUser = localStorage.getItem('user');
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-    }
-    setLoading(false);
-  }, []);
+	// State for user info and JWT token
+	const [user, setUser] = useState(null);
+	const [token, setToken] = useState(localStorage.getItem("token"));
+	const [loading, setLoading] = useState(true);
 
-  const login = async (email, password) => {
-    try {
-      // Use the provided API endpoint for login
-      const response = await fetch('https://stockmanagementbackend.onrender.com/api/users/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password })
-      });
-      if (!response.ok) {
-        return false;
-      }
-      const data = await response.json();
-      // Store user and token
-      setUser(data.user || { email });
-      localStorage.setItem('user', JSON.stringify(data.user || { email }));
-      if (data.token) {
-        localStorage.setItem('token', data.token);
-      }
-      return true;
-    } catch (error) {
-      console.error('Login error:', error);
-      return false;
-    }
-  };
+	// On mount: restore auth state, check token expiry
+	useEffect(() => {
+		const storedToken = localStorage.getItem("token");
+		const storedUser = localStorage.getItem("user");
 
-  const logout = () => {
-    setUser(null);
-    localStorage.removeItem('user');
-  };
+		if (storedToken) {
+			try {
+				const decoded = jwtDecode(storedToken);
+				// If token is still valid, restore state
+				if (decoded.exp * 1000 > Date.now()) {
+					setToken(storedToken);
+					if (storedUser) setUser(JSON.parse(storedUser));
+				} else {
+					// Token expired → force logout
+					logout();
+				}
+			} catch (err) {
+				console.error("Invalid token:", err);
+				logout();
+			}
+		}
+		setLoading(false);
+	}, []);
 
-  const value = {
-    user,
-    isAuthenticated: !!user,
-    login,
-    logout,
-    loading
-  };
+	// Log in user and store token & user info
+	const login = async (email, password) => {
+		try {
+			const response = await fetch(
+				"https://stockmanagementbackend.onrender.com/api/users/login",
+				{
+					method: "POST",
+					headers: { "Content-Type": "application/json" },
+					body: JSON.stringify({ email, password }),
+				}
+			);
+			if (!response.ok) {
+				return false;
+			}
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+			const data = await response.json();
+
+			// Save token & user
+			if (data.token) {
+				localStorage.setItem("token", data.token);
+				setToken(data.token);
+			}
+			const userObj = data.user || { email };
+			localStorage.setItem("user", JSON.stringify(userObj));
+			setUser(userObj);
+
+			// Optional: redirect upon login
+			navigate("/dashboard");
+
+			return true;
+		} catch (error) {
+			console.error("Login error:", error);
+			return false;
+		}
+	};
+
+	// Log out user and clean up
+	const logout = () => {
+		setUser(null);
+		setToken(null);
+		localStorage.removeItem("user");
+		localStorage.removeItem("token");
+		navigate("/login");
+	};
+
+	// Fetch latest user info from API
+	const refreshUser = async () => {
+		if (!token) return;
+		try {
+			const response = await fetch(
+				"https://stockmanagementbackend.onrender.com/api/users/me",
+				{ headers: { Authorization: `Bearer ${token}` } }
+			);
+			if (response.ok) {
+				const data = await response.json();
+				setUser(data.user);
+				localStorage.setItem("user", JSON.stringify(data.user));
+			} else {
+				logout();
+			}
+		} catch (error) {
+			console.error("Refresh user failed:", error);
+			logout();
+		}
+	};
+
+	// Context value
+	const value = {
+		user,
+		token,
+		isAuthenticated: !!user,
+		loading,
+		login,
+		logout,
+		refreshUser,
+	};
+
+	return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
 export { AuthContext };
