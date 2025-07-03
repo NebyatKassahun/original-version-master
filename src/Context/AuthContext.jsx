@@ -1,4 +1,5 @@
 import React, { createContext, useState, useEffect } from 'react';
+// import { apiService } from '../services/api';
 
 const AuthContext = createContext();
 
@@ -16,19 +17,23 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (email, password) => {
     try {
-      if (email === 'admin@storify.com' && password === 'admin123') {
-        const mockUser = {
-          id: '1',
-          firstName: 'Admin',
-          lastName: 'User',
-          email: 'admin@storify.com',
-          role: 'admin'
-        };
-        setUser(mockUser);
-        localStorage.setItem('user', JSON.stringify(mockUser));
-        return true;
+      // Use the provided API endpoint for login
+      const response = await fetch('https://stockmanagementbackend.onrender.com/api/users/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
+      if (!response.ok) {
+        return false;
       }
-      return false;
+      const data = await response.json();
+      // Store user and token
+      setUser(data.user || { email });
+      localStorage.setItem('user', JSON.stringify(data.user || { email }));
+      if (data.token) {
+        localStorage.setItem('token', data.token);
+      }
+      return true;
     } catch (error) {
       console.error('Login error:', error);
       return false;
