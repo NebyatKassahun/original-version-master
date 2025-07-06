@@ -137,8 +137,8 @@ const Products = () => {
 
 		// This is the part where it allows adding of products.
 		return (
-			<div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-6 z-[9999] w-screen h-screen">
-				<div className="bg-white rounded-2xl w-full max-w-lg max-h-full overflow-y-auto shadow-2xl">
+			<div className="fixed inset-0 z-[9999] bg-black/50 backdrop-blur-sm flex items-center justify-center p-6 w-screen h-screen overflow-y-auto">
+				<div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl">
 					<div className="p-6">
 						<h2 className="text-2xl font-bold text-gray-900 mb-6">
 							{product ? "Edit Product" : "Add New Product"}
@@ -149,8 +149,9 @@ const Products = () => {
 								value={formData.name}
 								onChange={(val) => setFormData({ ...formData, name: val })}
 							/>
+
 							<div className="grid grid-cols-2 gap-4">
-								<inputField
+								<InputField
 									label="Production Date"
 									type="date"
 									value={formData.productionDate}
@@ -158,7 +159,7 @@ const Products = () => {
 										setFormData({ ...formData, productionDate: val })
 									}
 								/>
-								<inputField
+								<InputField
 									label="Expiry Date"
 									type="date"
 									value={formData.expiryDate}
@@ -167,52 +168,34 @@ const Products = () => {
 									}
 								/>
 							</div>
+
 							<div className="grid grid-cols-2 gap-4">
-								<inputField
+								<InputField
 									label="Category"
 									value={formData.category}
 									onChange={(val) =>
 										setFormData({ ...formData, category: val })
 									}
 								/>
-								<inputField
+								<InputField
 									type="number"
 									label="Price (ETB)"
 									value={formData.price}
 									onChange={(val) =>
 										setFormData({ ...formData, price: parseFloat(val) })
-									}
-								/>
-							</div>
-							<div className="grid grid-cols-2 gap-4">
-								<inputField
-									type="number"
-									label="Stock"
-									value={formData.stock}
-									onChange={(val) =>
-										setFormData({ ...formData, stock: parseInt(val) })
 									}
 								/>
 							</div>
 
-							<div className="grid grid-cols-2 gap-4">
-								<InputField
-									type="number"
-									label="Price (ETB)"
-									value={formData.price}
-									onChange={(val) =>
-										setFormData({ ...formData, price: parseFloat(val) })
-									}
-								/>
-								<InputField
-									type="number"
-									label="Stock"
-									value={formData.stock}
-									onChange={(val) =>
-										setFormData({ ...formData, stock: parseInt(val) })
-									}
-								/>
-							</div>
+							<InputField
+								type="number"
+								label="Stock"
+								value={formData.stock}
+								onChange={(val) =>
+									setFormData({ ...formData, stock: parseInt(val) })
+								}
+							/>
+
 							<div>
 								<label className="block text-sm font-semibold text-gray-700 mb-2">
 									Description
@@ -226,6 +209,7 @@ const Products = () => {
 									className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
 								/>
 							</div>
+
 							<div className="flex justify-end space-x-3 pt-6">
 								<button
 									type="button"
@@ -365,19 +349,6 @@ const Products = () => {
 								</th>
 								<th
 									className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors duration-200"
-									onClick={() => handleSort("sku")}
-								>
-									<div className="flex items-center space-x-1">
-										<span>SKU</span>
-										{sortField === "sku" && (
-											<span className="text-blue-600">
-												{sortDirection === "asc" ? "↑" : "↓"}
-											</span>
-										)}
-									</div>
-								</th>
-								<th
-									className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors duration-200"
 									onClick={() => handleSort("category")}
 								>
 									<div className="flex items-center space-x-1">
@@ -432,7 +403,10 @@ const Products = () => {
 										</div>
 									</td>
 									<td className="px-6 py-4 whitespace-nowrap text-gray-600 font-medium">
-										{product.sku}
+										{product.productionDate}
+									</td>
+									<td className="px-6 py-4 whitespace-nowrap text-gray-600 font-medium">
+										{product.expiryDate}
 									</td>
 									<td className="px-6 py-4 whitespace-nowrap">
 										<span className="inline-flex px-3 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded-full">

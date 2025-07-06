@@ -25,7 +25,7 @@ const Customers = () => {
 				});
 				if (!res.ok) throw new Error("Failed to fetch customers");
 				const data = await res.json();
-				setCustomers(data.customers || data); // support both {customers:[]} and []
+				setCustomers((data.customers || data).filter((c) => !c.isDeleted));
 			} catch {
 				setError("Could not load customers.");
 			} finally {
@@ -64,7 +64,12 @@ const Customers = () => {
 			if (!res.ok) throw new Error("Failed to add customer");
 			const added = await res.json();
 			setCustomers([...customers, added.customer || added]);
-			setNewCustomer({ name: "", email: "", phone: "" });
+			setNewCustomer({
+				firstName: "",
+				lastName: "",
+				email: "",
+				phone: "",
+			});
 		} catch {
 			setError("Could not add customer.");
 		} finally {
@@ -72,17 +77,21 @@ const Customers = () => {
 		}
 	};
 
-	const handleDelete = async (id) => {
+	const handleDelete = async (customerId) => {
 		setLoading(true);
 		setError("");
 		try {
 			const token = localStorage.getItem("token");
-			const res = await fetch(`${API_URL}/${id}`, {
+			const res = await fetch(`${API_URL}/${customerId}`, {
 				method: "DELETE",
 				headers: token ? { Authorization: `Bearer ${token}` } : {},
 			});
-			if (!res.ok) throw new Error("Failed to delete customer");
-			setCustomers(customers.filter((c) => c.id !== id && c._id !== id));
+			if (!res.ok) {
+				const errText = await res.text();
+				console.error("Delete failed:", errText);
+				throw new Error("Failed to delete customer");
+			}
+			setCustomers(customers.filter((c) => c.customerId !== customerId));
 		} catch {
 			setError("Could not delete customer.");
 		} finally {
@@ -102,13 +111,22 @@ const Customers = () => {
 					</div>
 				)}
 				<form onSubmit={handleAddCustomer} className="mb-6 space-y-4">
-					<div className="flex flex-col md:flex-row gap-4">
+					<div className="flex flex-col md:flex-row gap-4 flex-wrap">
 						<input
 							type="text"
 							name="firstName"
 							value={newCustomer.firstName}
 							onChange={handleChange}
-							placeholder="Name"
+							placeholder="First Name"
+							className="border px-3 py-2 rounded-lg flex-1"
+							required
+						/>
+						<input
+							type="text"
+							name="lastName"
+							value={newCustomer.lastName}
+							onChange={handleChange}
+							placeholder="Last Name"
 							className="border px-3 py-2 rounded-lg flex-1"
 							required
 						/>
@@ -153,7 +171,7 @@ const Customers = () => {
 						</thead>
 						<tbody>
 							{customers.map((customer) => (
-								<tr key={customer.id || customer._id} className="border-t">
+								<tr key={customer.customerId} className="border-t">
 									<td className="py-2">
 										{customer.firstName} {customer.lastName}
 									</td>
@@ -161,7 +179,7 @@ const Customers = () => {
 									<td className="py-2">{customer.phone}</td>
 									<td className="py-2">
 										<button
-											onClick={() => handleDelete(customer.id || customer._id)}
+											onClick={() => handleDelete(customer.customerId)}
 											className="text-red-600 hover:underline"
 											disabled={loading}
 										>
