@@ -23,8 +23,13 @@ const Products = () => {
 	const [filterCategory, setFilterCategory] = useState("all");
 
 	useEffect(() => {
+		const token = localStorage.getItem("token");
 		axios
-			.get(API_URL)
+			.get(API_URL, {
+				headers: {
+					Authorization: `Bearer ${token}`,
+				},
+			})
 			.then((res) => setProducts(res.data))
 			.catch((err) => console.error("Failed to fetch products:", err));
 	}, []);
@@ -72,9 +77,15 @@ const Products = () => {
 	};
 
 	const handleDelete = (productId) => {
+		const token = localStorage.getItem("token");
+
 		if (window.confirm("Are you sure you want to delete this product?")) {
 			axios
-				.delete(`${API_URL}${productId}`)
+				.delete(`${API_URL}/${productId}`, {
+					headers: {
+						Authorization: `Bearer ${token}`,
+					},
+				})
 				.then(() => {
 					setProducts((prev) => prev.filter((p) => p.id !== productId));
 				})
@@ -82,10 +93,12 @@ const Products = () => {
 		}
 	};
 
-	const getStockStatusColor = (stock) => {
-		if (stock <= 5) return "bg-red-100 text-red-800 border-red-200";
-		if (stock <= 15) return "bg-orange-100 text-orange-800 border-orange-200";
-		if (stock <= 30) return "bg-yellow-100 text-yellow-800 border-yellow-200";
+	const getQuantityStatusColor = (quantity) => {
+		if (quantity <= 5) return "bg-red-100 text-red-800 border-red-200";
+		if (quantity <= 15)
+			return "bg-orange-100 text-orange-800 border-orange-200";
+		if (quantity <= 30)
+			return "bg-yellow-100 text-yellow-800 border-yellow-200";
 		return "bg-green-100 text-green-800 border-green-200";
 	};
 
@@ -111,21 +124,27 @@ const Products = () => {
 			expiryDate: product?.expiryDate || "",
 			category: product?.category || "",
 			price: product?.price || 0,
-			stock: product?.quantity || 0,
+			quantity: product?.quantity || 0,
 			description: product?.description || "",
 			imageUrl: product?.imageUrl || "",
 		});
 
 		const handleSubmit = (e) => {
 			e.preventDefault();
-			const method = product ? "put" : "post";
-			const url = product ? `${API_URL}${product.id}` : API_URL;
+			const token = localStorage.getItem("token");
 
-			axios[method](url, formData)
+			const method = product ? "put" : "post";
+			const url = product ? `${API_URL}/${product.productId}` : API_URL;
+
+			axios[method](url, formData, {
+				headers: {
+					Authorization: `Bearer ${token}`,
+				},
+			})
 				.then((res) => {
 					if (product) {
 						setProducts((prev) =>
-							prev.map((p) => (p.id === product.id ? res.data : p))
+							prev.map((p) => (p.id === product.productId ? res.data : p))
 						);
 					} else {
 						setProducts((prev) => [...prev, res.data]);
@@ -137,93 +156,97 @@ const Products = () => {
 
 		// This is the part where it allows adding of products.
 		return (
-			<div className="fixed inset-0 z-[9999] bg-black/50 backdrop-blur-sm flex items-center justify-center p-6 w-screen h-screen overflow-y-auto">
-				<div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl">
-					<div className="p-6">
-						<h2 className="text-2xl font-bold text-gray-900 mb-6">
-							{product ? "Edit Product" : "Add New Product"}
-						</h2>
-						<form onSubmit={handleSubmit} className="space-y-4">
+			<div className="fixed inset-0 z-[9999] flex items-center justify-center w-screen h-screen">
+				{/* Overlay with blur and dark background */}
+				<div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+
+				{/* Modal content */}
+				<div className="relative bg-white rounded-2xl w-full max-w-lg max-h-[95vh] overflow-y-auto shadow-2xl p-6">
+					<h2 className="text-2xl font-bold text-gray-900 mb-6">
+						{product ? "Edit Product" : "Add New Product"}
+					</h2>
+
+					<form onSubmit={handleSubmit} className="space-y-4">
+						<InputField
+							label="Product Name"
+							value={formData.name}
+							onChange={(val) => setFormData({ ...formData, name: val })}
+						/>
+
+						<div className="grid grid-cols-2 gap-4">
 							<InputField
-								label="Product Name"
-								value={formData.name}
-								onChange={(val) => setFormData({ ...formData, name: val })}
-							/>
-
-							<div className="grid grid-cols-2 gap-4">
-								<InputField
-									label="Production Date"
-									type="date"
-									value={formData.productionDate}
-									onChange={(val) =>
-										setFormData({ ...formData, productionDate: val })
-									}
-								/>
-								<InputField
-									label="Expiry Date"
-									type="date"
-									value={formData.expiryDate}
-									onChange={(val) =>
-										setFormData({ ...formData, expiryDate: val })
-									}
-								/>
-							</div>
-
-							<div className="grid grid-cols-2 gap-4">
-								<InputField
-									label="Category"
-									value={formData.category}
-									onChange={(val) =>
-										setFormData({ ...formData, category: val })
-									}
-								/>
-								<InputField
-									type="number"
-									label="Price (ETB)"
-									value={formData.price}
-									onChange={(val) =>
-										setFormData({ ...formData, price: parseFloat(val) })
-									}
-								/>
-							</div>
-
-							<InputField
-								type="number"
-								label="Stock"
-								value={formData.stock}
+								label="Production Date"
+								type="date"
+								value={formData.productionDate}
 								onChange={(val) =>
-									setFormData({ ...formData, stock: parseInt(val) })
+									setFormData({ ...formData, productionDate: val })
 								}
 							/>
+							<InputField
+								label="Expiry Date"
+								type="date"
+								value={formData.expiryDate}
+								onChange={(val) =>
+									setFormData({ ...formData, expiryDate: val })
+								}
+							/>
+						</div>
 
-							<div>
-								<label className="block text-sm font-semibold text-gray-700 mb-2">
-									Description
-								</label>
-								<textarea
-									value={formData.description}
-									onChange={(e) =>
-										setFormData({ ...formData, description: e.target.value })
-									}
-									rows={3}
-									className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-								/>
-							</div>
+						<div className="grid grid-cols-2 gap-4">
+							<InputField
+								label="Category"
+								value={formData.category}
+								onChange={(val) => setFormData({ ...formData, category: val })}
+							/>
+							<InputField
+								type="number"
+								label="Price (ETB)"
+								value={formData.price}
+								onChange={(val) =>
+									setFormData({ ...formData, price: parseFloat(val) })
+								}
+							/>
+						</div>
 
-							<div className="flex justify-end space-x-3 pt-6">
-								<button
-									type="button"
-									onClick={onClose}
-									className="btn-secondary"
-								>
-									Cancel
-								</button>
-								<button type="submit" className="btn-primary">
-									{product ? "Update" : "Add"} Product
-								</button>
-							</div>
-						</form>
-					</div>
+						<InputField
+							type="number"
+							label="Quantity"
+							value={formData.quantity}
+							onChange={(val) =>
+								setFormData({ ...formData, quantity: parseInt(val) })
+							}
+						/>
+
+						<div>
+							<label className="block text-sm font-semibold text-gray-700 mb-2">
+								Description
+							</label>
+							<textarea
+								value={formData.description}
+								onChange={(e) =>
+									setFormData({ ...formData, description: e.target.value })
+								}
+								rows={3}
+								className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+							/>
+						</div>
+
+						<div className="flex justify-end space-x-3 pt-6">
+							<button
+								type="button"
+								onClick={onClose}
+								className="px-6 py-3 rounded-xl border border-red-300 text-red-700 bg-red-50 hover:bg-red-100 transition-all duration-200 shadow-sm transform hover:scale-105"
+							>
+								Cancel
+							</button>
+							<button
+								type="submit"
+								className="bg-gradient-to-r from-blue-600 to-blue-700 text-white px-6 py-3 rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all duration-200 flex items-center space-x-2 shadow-lg transform hover:scale-105"
+							>
+								{product ? "Update" : "Add"} Product
+							</button>
+						</div>
+					</form>
 				</div>
 			</div>
 		);
@@ -307,7 +330,7 @@ const Products = () => {
 						<div>
 							<p className="text-sm text-gray-600">In Stock</p>
 							<p className="text-2xl font-bold text-gray-900">
-								{products.filter((p) => p.stock > 0).length}
+								{products.filter((p) => p.quantity > 0).length}
 							</p>
 						</div>
 					</div>
@@ -321,7 +344,7 @@ const Products = () => {
 						<div>
 							<p className="text-sm text-gray-600">Low Stock</p>
 							<p className="text-2xl font-bold text-gray-900">
-								{products.filter((p) => p.stock <= 10).length}
+								{products.filter((p) => p.quantity <= 10).length}
 							</p>
 						</div>
 					</div>
@@ -340,6 +363,32 @@ const Products = () => {
 								>
 									<div className="flex items-center space-x-1">
 										<span>Name</span>
+										{sortField === "name" && (
+											<span className="text-blue-600">
+												{sortDirection === "asc" ? "↑" : "↓"}
+											</span>
+										)}
+									</div>
+								</th>
+								<th
+									className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors duration-200"
+									onClick={() => handleSort("expiryDate")}
+								>
+									<div className="flex items-center space-x-1">
+										<span>Expiry</span>
+										{sortField === "name" && (
+											<span className="text-blue-600">
+												{sortDirection === "asc" ? "↑" : "↓"}
+											</span>
+										)}
+									</div>
+								</th>
+								<th
+									className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors duration-200"
+									onClick={() => handleSort("productionDate")}
+								>
+									<div className="flex items-center space-x-1">
+										<span>Production</span>
 										{sortField === "name" && (
 											<span className="text-blue-600">
 												{sortDirection === "asc" ? "↑" : "↓"}
@@ -375,11 +424,11 @@ const Products = () => {
 								</th>
 								<th
 									className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors duration-200"
-									onClick={() => handleSort("stock")}
+									onClick={() => handleSort("quantity")}
 								>
 									<div className="flex items-center space-x-1">
-										<span>Stock</span>
-										{sortField === "stock" && (
+										<span>Quantity</span>
+										{sortField === "quantity" && (
 											<span className="text-blue-600">
 												{sortDirection === "asc" ? "↑" : "↓"}
 											</span>
@@ -394,7 +443,7 @@ const Products = () => {
 						<tbody className="bg-white divide-y divide-gray-200">
 							{filteredProducts.map((product) => (
 								<tr
-									key={product.id}
+									key={product.productId}
 									className="hover:bg-gray-50 transition-colors duration-200"
 								>
 									<td className="px-6 py-4 whitespace-nowrap">
@@ -418,11 +467,11 @@ const Products = () => {
 									</td>
 									<td className="px-6 py-4 whitespace-nowrap">
 										<span
-											className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full border ${getStockStatusColor(
-												product.stock
+											className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full border ${getQuantityStatusColor(
+												product.quantity
 											)}`}
 										>
-											{product.stock}
+											{product.quantity}
 										</span>
 									</td>
 									<td className="px-6 py-4 whitespace-nowrap text-right text-sm">
@@ -434,7 +483,7 @@ const Products = () => {
 												<Edit className="w-4 h-4" />
 											</button>
 											<button
-												onClick={() => handleDelete(product.id)}
+												onClick={() => handleDelete(product.productId)}
 												className="text-red-600 hover:text-red-800 p-2 rounded-lg hover:bg-red-50 transition-all duration-200"
 											>
 												<Trash2 className="w-4 h-4" />
@@ -459,7 +508,7 @@ const Products = () => {
 			</div>
 
 			{/* Low Stock Alert */}
-			{products.some((p) => p.stock <= 10) && (
+			{products.some((p) => p.quantity <= 10) && (
 				<div className="bg-gradient-to-r from-red-50 to-orange-50 border border-red-200 rounded-2xl p-6">
 					<div className="flex items-start space-x-4">
 						<div className="flex-shrink-0">
