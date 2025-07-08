@@ -3,11 +3,14 @@ import axios from "axios";
 
 const Settings = () => {
 	const [profile, setProfile] = useState({
-		name: "",
+		firstName: "",
+		lastName: "",
 		email: "",
+		phone: "",
 		password: "",
 		photo: null,
 		photoURL: null,
+		createdAt: "",
 	});
 	const [editMode, setEditMode] = useState(false);
 	const [message, setMessage] = useState("");
@@ -29,50 +32,45 @@ const Settings = () => {
 	useEffect(() => {
 		const token = localStorage.getItem("token");
 		if (!token) return;
-
-		// Decode the token manually
 		const userId = getUserIdFromToken(token);
-
-		if (!userId) {
-			console.error("User ID not found in token.");
-			return;
-		}
-		// localStorage.getItem("userId");
-
-		// console.log("Fetching user data with token:", token, "and userId:", userId);
-		// if (!token || !userId) return;
-
+		if (!userId) return;
 		axios
 			.get(`https://stockmanagementbackend.onrender.com/api/users/${userId}`, {
 				headers: { Authorization: `Bearer ${token}` },
 			})
 			.then((res) => {
-				if (!editMode) {
-					const { firstName, lastName, email, profilePictureUrl } = res.data;
-					setProfile({
-						name: `${firstName} ${lastName}`,
-						email: email || "",
-						photo: null,
-						password: "",
-						photoURL: profilePictureUrl || null,
-					});
-				}
+				const {
+					firstName,
+					lastName,
+					email,
+					phone,
+					profilePictureUrl,
+					createdAt,
+				} = res.data;
+				setProfile({
+					firstName: firstName || "",
+					lastName: lastName || "",
+					email: email || "",
+					phone: phone || "",
+					password: "",
+					photo: null,
+					photoURL:
+						profilePictureUrl &&
+						(profilePictureUrl.startsWith("http")
+							? profilePictureUrl
+							: `https://stockmanagementbackend.onrender.com${profilePictureUrl}`),
+					createdAt: createdAt || "",
+				});
 			})
 			.catch((err) => {
-				console.error("Failed to fetch user data:", err);
+				setMessage("Failed to fetch user data.",err);
 			});
-	}, [editMode]);
+	}, []);
 
-	// useEffect(() => {
-	// 	console.log("Fetched profile:", profile);
-	// }, [profile]);
-
-	// Handle form field changes (name, email, password)
 	const handleChange = (e) => {
 		setProfile({ ...profile, [e.target.name]: e.target.value });
 	};
 
-	// Handle file selection & show preview
 	const handlePhotoChange = (e) => {
 		const file = e.target.files[0];
 		if (file) {
@@ -88,50 +86,37 @@ const Settings = () => {
 		}
 	};
 
-	// Save updated profile (including photo upload)
 	const handleSave = async (e) => {
 		e.preventDefault();
-
 		const token = localStorage.getItem("token");
 		if (!token) {
 			setMessage("Authentication error. Please login again.");
 			return;
 		}
-
-		// Decode token to get userId (safer than relying on localStorage)
 		const userId = getUserIdFromToken(token);
-
 		if (!userId) {
 			setMessage("User ID not found. Please login again.");
 			return;
 		}
-
-		const trimmedName = profile.name.trim();
-		if (!trimmedName) {
-			setMessage("Name is required.");
+		if (!profile.firstName.trim() || !profile.lastName.trim()) {
+			setMessage("First and last name are required.");
 			return;
 		}
-
-		const [firstName, ...rest] = trimmedName.split(" ");
-		const lastName = rest.join(" ").trim();
-
-		if (!firstName || !lastName) {
-			setMessage("Please enter both first and last name.");
-			return;
-		}
-
 		if (!profile.email) {
 			setMessage("Email is required.");
 			return;
 		}
-
+		if (!profile.phone) {
+			setMessage("Phone is required.");
+			return;
+		}
 		const formData = new FormData();
-		formData.append("firstName", firstName);
-		formData.append("lastName", lastName);
+		formData.append("firstName", profile.firstName.trim());
+		formData.append("lastName", profile.lastName.trim());
 		formData.append("email", profile.email);
+		formData.append("phone", profile.phone);
 		if (profile.password) formData.append("password", profile.password);
-		if (profile.photo) formData.append("photo", profile.photo);
-
+		if (profile.photo) formData.append("profilePicture", profile.photo);
 		try {
 			const res = await axios.put(
 				`https://stockmanagementbackend.onrender.com/api/users/${userId}`,
@@ -143,25 +128,25 @@ const Settings = () => {
 					},
 				}
 			);
-
 			const updatedUser = res.data;
-
 			setProfile((prev) => ({
 				...prev,
-				name: `${updatedUser.firstName} ${updatedUser.lastName}`,
+				firstName: updatedUser.firstName,
+				lastName: updatedUser.lastName,
 				email: updatedUser.email,
-				photoURL: updatedUser.profilePictureUrl || null,
+				phone: updatedUser.phone,
+				photoURL:
+					updatedUser.profilePictureUrl &&
+					(updatedUser.profilePictureUrl.startsWith("http")
+						? updatedUser.profilePictureUrl
+						: `https://stockmanagementbackend.onrender.com${updatedUser.profilePictureUrl}`),
 				password: "",
 				photo: null,
 			}));
-
-			// The issue about the fast exit is here....
-			// setEditMode(false);
+			setEditMode(false);
 			setMessage("Profile updated successfully!");
-			// setTimeout(() => setMessage(""), 3000);
 		} catch (err) {
-			console.error("Update failed:", err.response?.data || err.message);
-			setMessage("Update failed. Please try again.");
+			setMessage("Update failed. Please try again.", err);
 		}
 	};
 
@@ -175,6 +160,17 @@ const Settings = () => {
 		if (editMode) {
 			setProfile({ ...profile, photo: null, photoURL: null });
 		}
+	};
+
+	// Format date as YYYY-MM-DD
+	const formatDate = (dateStr) => {
+		if (!dateStr) return "";
+		const d = new Date(dateStr);
+		if (isNaN(d)) return dateStr;
+		const year = d.getFullYear();
+		const month = String(d.getMonth() + 1).padStart(2, "0");
+		const day = String(d.getDate()).padStart(2, "0");
+		return `${year}-${month}-${day}`;
 	};
 
 	return (
@@ -203,7 +199,7 @@ const Settings = () => {
 								/>
 							) : (
 								<span className="text-3xl text-gray-400">
-									{profile.name ? profile.name[0] : "U"}
+									{profile.firstName ? profile.firstName[0] : "U"}
 								</span>
 							)}
 							<input
@@ -235,19 +231,35 @@ const Settings = () => {
 							</p>
 						</div>
 					</div>
-					<div>
-						<label className="block text-sm font-medium text-gray-700 mb-1">
-							Name
-						</label>
-						<input
-							type="text"
-							name="name"
-							value={profile.name}
-							onChange={handleChange}
-							disabled={!editMode}
-							className="border px-3 py-2 rounded-lg w-full"
-							autoComplete="off"
-						/>
+					<div className="grid grid-cols-2 gap-4">
+						<div>
+							<label className="block text-sm font-medium text-gray-700 mb-1">
+								First Name
+							</label>
+							<input
+								type="text"
+								name="firstName"
+								value={profile.firstName}
+								onChange={handleChange}
+								disabled={!editMode}
+								className="border px-3 py-2 rounded-lg w-full"
+								autoComplete="off"
+							/>
+						</div>
+						<div>
+							<label className="block text-sm font-medium text-gray-700 mb-1">
+								Last Name
+							</label>
+							<input
+								type="text"
+								name="lastName"
+								value={profile.lastName}
+								onChange={handleChange}
+								disabled={!editMode}
+								className="border px-3 py-2 rounded-lg w-full"
+								autoComplete="off"
+							/>
+						</div>
 					</div>
 					<div>
 						<label className="block text-sm font-medium text-gray-700 mb-1">
@@ -257,6 +269,20 @@ const Settings = () => {
 							type="email"
 							name="email"
 							value={profile.email}
+							onChange={handleChange}
+							disabled={!editMode}
+							className="border px-3 py-2 rounded-lg w-full"
+							autoComplete="off"
+						/>
+					</div>
+					<div>
+						<label className="block text-sm font-medium text-gray-700 mb-1">
+							Phone
+						</label>
+						<input
+							type="text"
+							name="phone"
+							value={profile.phone}
 							onChange={handleChange}
 							disabled={!editMode}
 							className="border px-3 py-2 rounded-lg w-full"
@@ -289,6 +315,17 @@ const Settings = () => {
 								</button>
 							)}
 						</div>
+					</div>
+					<div>
+						<label className="block text-sm font-medium text-gray-700 mb-1">
+							Joined
+						</label>
+						<input
+							type="text"
+							value={formatDate(profile.createdAt)}
+							disabled
+							className="border px-3 py-2 rounded-lg w-full bg-gray-100 text-gray-500"
+						/>
 					</div>
 					<div className="flex space-x-2">
 						{!editMode ? (
