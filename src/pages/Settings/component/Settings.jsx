@@ -14,17 +14,24 @@ const Settings = () => {
 	const [showPassword, setShowPassword] = useState(false);
 	const fileInputRef = useRef(null);
 
+	function getUserIdFromToken(token) {
+		try {
+			const base64Url = token.split(".")[1];
+			const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+			const decoded = JSON.parse(atob(base64));
+			return decoded?.userId;
+		} catch {
+			return null;
+		}
+	}
+
 	// Fetch user data on mount
 	useEffect(() => {
 		const token = localStorage.getItem("token");
-
 		if (!token) return;
 
 		// Decode the token manually
-		const base64Url = token.split(".")[1];
-		const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
-		const decoded = JSON.parse(atob(base64));
-		const userId = decoded?.userId;
+		const userId = getUserIdFromToken(token);
 
 		if (!userId) {
 			console.error("User ID not found in token.");
@@ -33,7 +40,7 @@ const Settings = () => {
 		// localStorage.getItem("userId");
 
 		// console.log("Fetching user data with token:", token, "and userId:", userId);
-		if (!token || !userId) return;
+		// if (!token || !userId) return;
 
 		axios
 			.get(`https://stockmanagementbackend.onrender.com/api/users/${userId}`, {
@@ -92,18 +99,10 @@ const Settings = () => {
 		}
 
 		// Decode token to get userId (safer than relying on localStorage)
-		try {
-			const base64Url = token.split(".")[1];
-			const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
-			const decoded = JSON.parse(atob(base64));
-			const userId = decoded?.userId;
+		const userId = getUserIdFromToken(token);
 
-			if (!userId) {
-				setMessage("User ID not found. Please login again.");
-				return;
-			}
-		} catch (error) {
-			setMessage("Invalid token. Please login again.", error);
+		if (!userId) {
+			setMessage("User ID not found. Please login again.");
 			return;
 		}
 
@@ -132,7 +131,7 @@ const Settings = () => {
 		formData.append("email", profile.email);
 		if (profile.password) formData.append("password", profile.password);
 		if (profile.photo) formData.append("photo", profile.photo);
-    const userId = localStorage.getItem("userId");
+
 		try {
 			const res = await axios.put(
 				`https://stockmanagementbackend.onrender.com/api/users/${userId}`,
@@ -156,9 +155,10 @@ const Settings = () => {
 				photo: null,
 			}));
 
-			setEditMode(false);
+			// The issue about the fast exit is here....
+			// setEditMode(false);
 			setMessage("Profile updated successfully!");
-			setTimeout(() => setMessage(""), 3000);
+			// setTimeout(() => setMessage(""), 3000);
 		} catch (err) {
 			console.error("Update failed:", err.response?.data || err.message);
 			setMessage("Update failed. Please try again.");
