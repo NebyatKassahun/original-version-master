@@ -34,6 +34,17 @@ const Products = () => {
 			.catch((err) => console.error("Failed to fetch products:", err));
 	}, []);
 
+	// Helper to format date as YYYY-MM-DD
+	const formatDate = (dateStr) => {
+		if (!dateStr) return "";
+		const d = new Date(dateStr);
+		if (isNaN(d)) return dateStr; // fallback if invalid
+		const year = d.getFullYear();
+		const month = String(d.getMonth() + 1).padStart(2, "0");
+		const day = String(d.getDate()).padStart(2, "0");
+		return `${year}-${month}-${day}`;
+	};
+
 	const categories = [
 		"all",
 		...Array.from(new Set(products.map((p) => p.category))),
@@ -452,10 +463,10 @@ const Products = () => {
 										</div>
 									</td>
 									<td className="px-6 py-4 whitespace-nowrap text-gray-600 font-medium">
-										{product.productionDate}
+										{formatDate(product.productionDate)}
 									</td>
 									<td className="px-6 py-4 whitespace-nowrap text-gray-600 font-medium">
-										{product.expiryDate}
+										{formatDate(product.expiryDate)}
 									</td>
 									<td className="px-6 py-4 whitespace-nowrap">
 										<span className="inline-flex px-3 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded-full">
