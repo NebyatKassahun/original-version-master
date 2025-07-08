@@ -9,6 +9,7 @@ import {
 	Star,
 	TrendingUp,
 	Package,
+	AlertTriangle,
 } from "lucide-react";
 
 const API_URL = "https://stockmanagementbackend.onrender.com/api/product/";
@@ -263,6 +264,9 @@ const Products = () => {
 		);
 	};
 
+	// Out of stock count
+	const outOfStock = products.filter((item) => item.quantity === 0).length;
+
 	return (
 		<div className="space-y-8 p-6">
 			{/* Header */}
@@ -318,7 +322,7 @@ const Products = () => {
 			</div>
 
 			{/* Stats Summary */}
-			<div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+			<div className="grid grid-cols-1 md:grid-cols-4 gap-6">
 				<div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
 					<div className="flex items-center space-x-4">
 						<div className="p-3 bg-blue-100 text-blue-600 rounded-xl">
@@ -355,8 +359,23 @@ const Products = () => {
 						<div>
 							<p className="text-sm text-gray-600">Low Stock</p>
 							<p className="text-2xl font-bold text-gray-900">
-								{products.filter((p) => p.quantity <= 10).length}
+								{
+									products.filter((p) => p.quantity <= 10 && p.quantity > 0)
+										.length
+								}
 							</p>
+						</div>
+					</div>
+				</div>
+
+				<div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
+					<div className="flex items-center space-x-4">
+						<div className="p-3 bg-gray-100 text-gray-600 rounded-xl">
+							<AlertTriangle className="w-6 h-6" />
+						</div>
+						<div>
+							<p className="text-sm text-gray-600">Out of Stock</p>
+							<p className="text-2xl font-bold text-gray-900">{outOfStock}</p>
 						</div>
 					</div>
 				</div>
