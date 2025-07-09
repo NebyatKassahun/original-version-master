@@ -17,6 +17,7 @@ import Orders from "./pages/Orders/component/Orders";
 import Customers from "./pages/Customers/component/Customers";
 import Reports from "./pages/Reports/component/Reports";
 import Settings from "./pages/Settings/component/Settings";
+import Supplier from "./pages/Supplier/component/Supplier";
 import { useAuth } from "./hooks/useAuth";
 
 const AppRoutes = () => {
@@ -38,6 +39,7 @@ const AppRoutes = () => {
 				<Route path="/customers/*" element={<Customers />} />
 				<Route path="/reports/*" element={<Reports />} />
 				<Route path="/settings" element={<Settings />} />
+				<Route path="/suppliers" element={<Supplier />} />
 			</Routes>
 		</Layout>
 	);

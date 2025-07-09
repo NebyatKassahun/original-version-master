@@ -48,6 +48,11 @@ const menuItems = [
 		path: "/customers",
 	},
 	{
+		icon: Users,
+		label: "Suppliers",
+		path: "/suppliers",
+	},
+	{
 		icon: BarChart3,
 		label: "Reports",
 		path: "/reports",
