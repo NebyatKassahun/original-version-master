@@ -7,11 +7,13 @@ const PURCHASE_API =
 const Purchase = () => {
 	const [products, setProducts] = useState([]);
 	const [purchases, setPurchases] = useState([]);
+	const [suppliers, setSuppliers] = useState([]);
 	const [form, setForm] = useState({
 		productId: "",
 		quantity: "",
 		price: "",
 		date: "",
+		supplierId: "",
 	});
 	const [error, setError] = useState("");
 
@@ -56,6 +58,26 @@ const Purchase = () => {
 		fetchPurchases();
 	}, []);
 
+	// Fetch suppliers
+	useEffect(() => {
+		const fetchSuppliers = async () => {
+			try {
+				const token = localStorage.getItem("token");
+				const res = await fetch(
+					"https://stockmanagementbackend.onrender.com/api/suppliers/",
+					{
+						headers: token ? { Authorization: `Bearer ${token}` } : {},
+					}
+				);
+				const data = await res.json();
+				setSuppliers((data.suppliers || data).filter((s) => !s.isDeleted));
+			} catch {
+				setError("Could not load suppliers.");
+			}
+		};
+		fetchSuppliers();
+	}, []);
+
 	const handleFormChange = (e) => {
 		setForm({ ...form, [e.target.name]: e.target.value });
 	};
@@ -66,9 +88,9 @@ const Purchase = () => {
 		setError("");
 
 		const token = localStorage.getItem("token");
-		const { productId, quantity, price, date } = form;
+		const { productId, quantity, price, date, supplierId } = form;
 
-		if (!productId || !quantity || !price || !date) {
+		if (!productId || !quantity || !price || !date || !supplierId) {
 			setError("All fields are required.");
 			return;
 		}
@@ -89,6 +111,7 @@ const Purchase = () => {
 						},
 					],
 					date,
+					supplierId,
 				}),
 			});
 
@@ -124,6 +147,7 @@ const Purchase = () => {
 				quantity: "",
 				price: "",
 				date: "",
+				supplierId: "",
 			});
 		} catch (err) {
 			console.error(err);
@@ -140,6 +164,20 @@ const Purchase = () => {
 					onSubmit={handleAddPurchase}
 					className="mb-6 flex flex-col md:flex-row gap-4"
 				>
+					<select
+						name="supplierId"
+						value={form.supplierId || ""}
+						onChange={handleFormChange}
+						className="border px-3 py-2 rounded-lg flex-1"
+						required
+					>
+						<option value="">Select Supplier</option>
+						{suppliers.map((s) => (
+							<option key={s.customerId || s._id} value={s.customerId || s._id}>
+								{s.firstName} {s.lastName}
+							</option>
+						))}
+					</select>
 					<select
 						name="productId"
 						value={form.productId}
@@ -193,6 +231,7 @@ const Purchase = () => {
 				<table className="w-full text-left">
 					<thead>
 						<tr>
+							<th className="py-2">Supplier</th>
 							<th className="py-2">Product</th>
 							<th className="py-2">Quantity</th>
 							<th className="py-2">Price Bought</th>
@@ -202,33 +241,45 @@ const Purchase = () => {
 					</thead>
 					<tbody>
 						{Array.isArray(purchases) && purchases.length > 0 ? (
-							purchases.map((purchase) => (
-								<tr
-									key={purchase.purchaseId || purchase.id}
-									className="border-t"
-								>
-									<td className="py-2">
-										{purchase.product?.name || purchase.productName || "-"}
-									</td>
-									<td className="py-2">
-										{purchase.quantity || purchase.purchaseQuantity || "-"}
-									</td>
-									<td className="py-2">
-										{purchase.price || purchase.purchasePrice || "-"}
-									</td>
-									<td className="py-2">
-										{purchase.date || purchase.createdAt
-											? (purchase.date || purchase.createdAt).slice(0, 10)
-											: "-"}
-									</td>
-									<td className="py-2">
-										{/* You can add delete/edit actions here */}
-									</td>
-								</tr>
-							))
+							purchases.map((purchase) => {
+								const supplier = suppliers.find(
+									(s) =>
+										s.customerId === purchase.supplierId ||
+										s._id === purchase.supplierId
+								);
+								return (
+									<tr
+										key={purchase.purchaseId || purchase.id}
+										className="border-t"
+									>
+										<td className="py-2">
+											{supplier
+												? `${supplier.firstName} ${supplier.lastName}`
+												: "-"}
+										</td>
+										<td className="py-2">
+											{purchase.product?.name || purchase.productName || "-"}
+										</td>
+										<td className="py-2">
+											{purchase.quantity || purchase.purchaseQuantity || "-"}
+										</td>
+										<td className="py-2">
+											{purchase.price || purchase.purchasePrice || "-"}
+										</td>
+										<td className="py-2">
+											{purchase.date || purchase.createdAt
+												? (purchase.date || purchase.createdAt).slice(0, 10)
+												: "-"}
+										</td>
+										<td className="py-2">
+											{/* You can add delete/edit actions here */}
+										</td>
+									</tr>
+								);
+							})
 						) : (
 							<tr>
-								<td colSpan={5} className="text-center text-gray-500 py-4">
+								<td colSpan={6} className="text-center text-gray-500 py-4">
 									No purchases recorded.
 								</td>
 							</tr>
