@@ -5,7 +5,6 @@ import {
 	Package,
 	ShoppingCart,
 	TrendingUp,
-	ShoppingBag,
 	Users,
 	BarChart3,
 	Settings,
@@ -36,11 +35,6 @@ const menuItems = [
 		icon: TrendingUp,
 		label: "Sales",
 		path: "/sales",
-	},
-	{
-		icon: ShoppingBag,
-		label: "Orders",
-		path: "/orders",
 	},
 	{
 		icon: Users,

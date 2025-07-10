@@ -13,18 +13,24 @@ import Dashboard from "./pages/Dashboard/component/Dashboard";
 import Products from "./pages/Products/component/Products";
 import Purchase from "./pages/Purchase/component/Purchase";
 import Sales from "./pages/Sales/component/Sales";
-import Orders from "./pages/Orders/component/Orders";
 import Customers from "./pages/Customers/component/Customers";
 import Reports from "./pages/Reports/component/Reports";
 import Settings from "./pages/Settings/component/Settings";
 import Supplier from "./pages/Supplier/component/Supplier";
+import Register from "./pages/Login/component/Register";
 import { useAuth } from "./hooks/useAuth";
 
 const AppRoutes = () => {
 	const { isAuthenticated } = useAuth();
 
 	if (!isAuthenticated) {
-		return <Login />;
+		return (
+			<Routes>
+				<Route path="/login" element={<Login />} />
+				<Route path="/register" element={<Register />} />
+				<Route path="*" element={<Navigate to="/login" replace />} />
+			</Routes>
+		);
 	}
 
 	return (
@@ -35,7 +41,6 @@ const AppRoutes = () => {
 				<Route path="/products/*" element={<Products />} />
 				<Route path="/purchase/*" element={<Purchase />} />
 				<Route path="/sales/*" element={<Sales />} />
-				<Route path="/orders/*" element={<Orders />} />
 				<Route path="/customers/*" element={<Customers />} />
 				<Route path="/reports/*" element={<Reports />} />
 				<Route path="/settings" element={<Settings />} />

@@ -114,7 +114,7 @@ const Login = () => {
 							{loading ? "Signing in..." : "Sign in"}
 						</button>
 
-						<div className="mt-6 text-center">
+						{/* <div className="mt-6 text-center">
 							<p className="text-sm text-gray-600">
 								Demo credentials: <br />
 								<span className="font-medium">
@@ -122,9 +122,13 @@ const Login = () => {
 								</span> admin@storify.com <br />
 								<span className="font-medium">Password:</span> admin123
 							</p>
-						</div>
+						</div> */}
 					</div>
 				</form>
+				<div className="mt-4 text-center">
+					<span className="text-sm text-gray-600">Don't have an account? </span>
+					<a href="/register" className="text-blue-600 hover:underline text-sm">Register</a>
+				</div>
 			</div>
 		</div>
 	);
