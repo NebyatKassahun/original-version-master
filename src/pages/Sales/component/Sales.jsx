@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { getBaseUrl } from "../../../Utils/baseApi";
+import { Edit, Trash2, Save, X } from "lucide-react";
 
 const API_URL = getBaseUrl() + "/api/sales/";
 
@@ -14,6 +15,8 @@ const Sales = () => {
 	});
 	const [loading, setLoading] = useState(false);
 	const [error, setError] = useState("");
+	const [editId, setEditId] = useState(null);
+	const [editValues, setEditValues] = useState({});
 
 	useEffect(() => {
 		const fetchSales = async () => {
@@ -102,6 +105,62 @@ const Sales = () => {
 		}
 	};
 
+	const handleEditClick = (sale) => {
+		setEditId(sale._id || sale.id);
+		setEditValues({
+			productName: sale.productName,
+			quantity: sale.quantity,
+			price: sale.price,
+			cost: sale.cost,
+			date: sale.date ? sale.date.slice(0, 10) : "",
+		});
+	};
+
+	const handleEditChange = (e) => {
+		setEditValues({ ...editValues, [e.target.name]: e.target.value });
+	};
+
+	const handleEditSave = async (id) => {
+		setLoading(true);
+		setError("");
+		try {
+			const token = localStorage.getItem("token");
+			const res = await fetch(`${API_URL}${id}`, {
+				method: "PUT",
+				headers: {
+					"Content-Type": "application/json",
+					...(token ? { Authorization: `Bearer ${token}` } : {}),
+				},
+				body: JSON.stringify({
+					...editValues,
+					quantity: Number(editValues.quantity),
+					price: Number(editValues.price),
+					cost: Number(editValues.cost),
+				}),
+			});
+			if (!res.ok) throw new Error("Failed to update sale");
+			const updated = await res.json();
+			setSales((prev) =>
+				prev.map((sale) =>
+					sale._id === id || sale.id === id
+						? { ...sale, ...(updated.sale || updated) }
+						: sale
+				)
+			);
+			setEditId(null);
+			setEditValues({});
+		} catch {
+			setError("Could not update sale.");
+		} finally {
+			setLoading(false);
+		}
+	};
+
+	const handleEditCancel = () => {
+		setEditId(null);
+		setEditValues({});
+	};
+
 	return (
 		<div className="space-y-6">
 			<h1 className="text-2xl font-semibold text-gray-900">Sales Management</h1>
@@ -184,26 +243,126 @@ const Sales = () => {
 							</tr>
 						</thead>
 						<tbody>
-							{sales.map((sale) => (
-								<tr key={sale._id || sale.id} className="border-t">
-									<td className="py-2">{sale.productName}</td>
-									<td className="py-2">{sale.quantity}</td>
-									<td className="py-2">${sale.price}</td>
-									<td className="py-2">${sale.cost}</td>
-									<td className="py-2">
-										{new Date(sale.date).toLocaleDateString()}
-									</td>
-									<td className="py-2">
-										<button
-											onClick={() => handleDelete(sale._id || sale.id)}
-											className="text-red-600 hover:underline"
-											disabled={loading}
-										>
-											Delete
-										</button>
-									</td>
-								</tr>
-							))}
+							{sales.map((sale) => {
+								const isEditing = editId === (sale._id || sale.id);
+								return (
+									<tr key={sale._id || sale.id} className="border-t">
+										<td className="py-2">
+											{isEditing ? (
+												<input
+													type="text"
+													name="productName"
+													value={editValues.productName}
+													onChange={handleEditChange}
+													className="border px-2 py-1 rounded w-full"
+												/>
+											) : (
+												sale.productName
+											)}
+										</td>
+										<td className="py-2">
+											{isEditing ? (
+												<input
+													type="number"
+													name="quantity"
+													value={editValues.quantity}
+													onChange={handleEditChange}
+													className="border px-2 py-1 rounded w-full"
+													min="1"
+												/>
+											) : (
+												sale.quantity
+											)}
+										</td>
+										<td className="py-2">
+											{isEditing ? (
+												<input
+													type="number"
+													name="price"
+													value={editValues.price}
+													onChange={handleEditChange}
+													className="border px-2 py-1 rounded w-full"
+													min="0"
+												/>
+											) : (
+												`$${sale.price}`
+											)}
+										</td>
+										<td className="py-2">
+											{isEditing ? (
+												<input
+													type="number"
+													name="cost"
+													value={editValues.cost}
+													onChange={handleEditChange}
+													className="border px-2 py-1 rounded w-full"
+													min="0"
+												/>
+											) : (
+												`$${sale.cost}`
+											)}
+										</td>
+										<td className="py-2">
+											{isEditing ? (
+												<input
+													type="date"
+													name="date"
+													value={editValues.date}
+													onChange={handleEditChange}
+													className="border px-2 py-1 rounded w-full"
+												/>
+											) : (
+												new Date(sale.date).toLocaleDateString()
+											)}
+										</td>
+										<td className="py-2">
+											<div className="flex items-center space-x-2">
+												{isEditing ? (
+													<>
+														<button
+															onClick={() =>
+																handleEditSave(sale._id || sale.id)
+															}
+															className="text-green-600 hover:text-green-800 p-2 rounded-lg hover:bg-green-50 transition-all duration-200"
+															disabled={loading}
+															title="Save"
+														>
+															<Save className="w-4 h-4" />
+														</button>
+														<button
+															onClick={handleEditCancel}
+															className="text-gray-600 hover:text-gray-800 p-2 rounded-lg hover:bg-gray-50 transition-all duration-200"
+															disabled={loading}
+															title="Cancel"
+														>
+															<X className="w-4 h-4" />
+														</button>
+													</>
+												) : (
+													<>
+														<button
+															onClick={() => handleEditClick(sale)}
+															className="text-blue-600 hover:text-blue-800 p-2 rounded-lg hover:bg-blue-50 transition-all duration-200"
+															disabled={loading}
+															title="Edit"
+														>
+															<Edit className="w-4 h-4" />
+														</button>
+														<button
+															onClick={() => handleDelete(sale._id || sale.id)}
+															className="text-red-600 hover:text-red-800 p-2 rounded-lg hover:bg-red-50 transition-all duration-200"
+															disabled={loading}
+															title="Delete"
+														>
+															<Trash2 className="w-4 h-4" />
+														</button>
+													</>
+												)}
+											</div>
+										</td>
+									</tr>
+								);
+							})}
 							{sales.length === 0 && !loading && (
 								<tr>
 									<td colSpan={6} className="text-center text-gray-500 py-4">

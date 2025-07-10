@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { getBaseUrl } from "../../../Utils/baseApi";
+import { Edit, Trash2 } from "lucide-react";
 
 const API_URL = getBaseUrl() + "/api/customers";
 
@@ -13,6 +14,13 @@ const Customers = () => {
 	});
 	const [loading, setLoading] = useState(false);
 	const [error, setError] = useState("");
+	const [editId, setEditId] = useState(null);
+	const [editCustomer, setEditCustomer] = useState({
+		firstName: "",
+		lastName: "",
+		email: "",
+		phone: "",
+	});
 
 	// Fetch customers from API
 	useEffect(() => {
@@ -100,6 +108,50 @@ const Customers = () => {
 		}
 	};
 
+	const handleEditClick = (customer) => {
+		setEditId(customer.customerId);
+		setEditCustomer({
+			firstName: customer.firstName,
+			lastName: customer.lastName,
+			email: customer.email,
+			phone: customer.phone,
+		});
+	};
+
+	const handleEditChange = (e) => {
+		setEditCustomer({ ...editCustomer, [e.target.name]: e.target.value });
+	};
+
+	const handleEditSave = async (id) => {
+		setLoading(true);
+		setError("");
+		try {
+			const token = localStorage.getItem("token");
+			const res = await fetch(`${API_URL}/${id}`, {
+				method: "PUT",
+				headers: {
+					"Content-Type": "application/json",
+					...(token ? { Authorization: `Bearer ${token}` } : {}),
+				},
+				body: JSON.stringify(editCustomer),
+			});
+			if (!res.ok) throw new Error("Failed to update customer");
+			const updated = await res.json();
+			setCustomers((prev) =>
+				prev.map((c) => (c.customerId === id ? updated.customer || updated : c))
+			);
+			setEditId(null);
+		} catch {
+			setError("Could not update customer.");
+		} finally {
+			setLoading(false);
+		}
+	};
+
+	const handleEditCancel = () => {
+		setEditId(null);
+	};
+
 	return (
 		<div className="space-y-6">
 			<h1 className="text-2xl font-semibold text-gray-900">
@@ -173,20 +225,82 @@ const Customers = () => {
 						<tbody>
 							{customers.map((customer) => (
 								<tr key={customer.customerId} className="border-t">
-									<td className="py-2">
-										{customer.firstName} {customer.lastName}
-									</td>
-									<td className="py-2">{customer.email}</td>
-									<td className="py-2">{customer.phone}</td>
-									<td className="py-2">
-										<button
-											onClick={() => handleDelete(customer.customerId)}
-											className="text-red-600 hover:underline"
-											disabled={loading}
-										>
-											Delete
-										</button>
-									</td>
+									{editId === customer.customerId ? (
+										<>
+											<td className="py-2">
+												<input
+													type="text"
+													name="firstName"
+													value={editCustomer.firstName}
+													onChange={handleEditChange}
+													className="border px-2 py-1 rounded"
+												/>
+											</td>
+											<td className="py-2">
+												<input
+													type="email"
+													name="email"
+													value={editCustomer.email}
+													onChange={handleEditChange}
+													className="border px-2 py-1 rounded"
+													readOnly
+												/>
+											</td>
+											<td className="py-2">
+												<input
+													type="text"
+													name="phone"
+													value={editCustomer.phone}
+													onChange={handleEditChange}
+													className="border px-2 py-1 rounded"
+												/>
+											</td>
+											<td className="py-2">
+												<div className="flex items-center space-x-2">
+													<button
+														onClick={() => handleEditSave(customer.customerId)}
+														className="bg-green-600 text-white px-2 py-1 rounded hover:bg-green-700"
+														disabled={loading}
+													>
+														Save
+													</button>
+													<button
+														onClick={handleEditCancel}
+														className="bg-gray-400 text-white px-2 py-1 rounded hover:bg-gray-500"
+														disabled={loading}
+													>
+														Cancel
+													</button>
+												</div>
+											</td>
+										</>
+									) : (
+										<>
+											<td className="py-2">
+												{customer.firstName} {customer.lastName}
+											</td>
+											<td className="py-2">{customer.email}</td>
+											<td className="py-2">{customer.phone}</td>
+											<td className="py-2">
+												<div className="flex items-center space-x-2">
+													<button
+														onClick={() => handleEditClick(customer)}
+														className="text-blue-600 hover:text-blue-800 p-2 rounded-lg hover:bg-blue-50 transition-all duration-200"
+														disabled={loading}
+													>
+														<Edit className="w-4 h-4" />
+													</button>
+													<button
+														onClick={() => handleDelete(customer.customerId)}
+														className="text-red-600 hover:text-red-800 p-2 rounded-lg hover:bg-red-50 transition-all duration-200"
+														disabled={loading}
+													>
+														<Trash2 className="w-4 h-4" />
+													</button>
+												</div>
+											</td>
+										</>
+									)}
 								</tr>
 							))}
 							{customers.length === 0 && !loading && (

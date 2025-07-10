@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
+import { getBaseUrl } from "../../../Utils/baseApi";
 import {
 	Search,
 	Plus,
@@ -12,7 +13,7 @@ import {
 	AlertTriangle,
 } from "lucide-react";
 
-const API_URL = "http://localhost:3000/api/product/";
+const API_URL = getBaseUrl() + "/api/product/";
 
 const Products = () => {
 	const [products, setProducts] = useState([]);

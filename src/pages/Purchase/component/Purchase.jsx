@@ -1,8 +1,28 @@
 import React, { useState, useEffect } from "react";
 import { getBaseUrl } from "../../../Utils/baseApi";
+import { Edit, Trash2 } from "lucide-react";
 
 const PRODUCT_API = getBaseUrl() + "/api/product/";
 const PURCHASE_API = getBaseUrl() + "/api/purchase/";
+
+const mockPurchases = [
+	{
+		purchaseId: "mock1",
+		supplierId: "supplier1",
+		product: { name: "Mock Product A", _id: "product1" },
+		quantity: 10,
+		price: 50,
+		date: "2025-07-01T00:00:00.000Z",
+	},
+	{
+		purchaseId: "mock2",
+		supplierId: "supplier2",
+		product: { name: "Mock Product B", _id: "product2" },
+		quantity: 5,
+		price: 30,
+		date: "2025-07-05T00:00:00.000Z",
+	},
+];
 
 const Purchase = () => {
 	const [products, setProducts] = useState([]);
@@ -45,15 +65,17 @@ const Purchase = () => {
 				});
 				if (!res.ok) throw new Error("Could not fetch purchases");
 				const data = await res.json();
-				setPurchases(
-					Array.isArray(data.purchases)
-						? data.purchases
-						: Array.isArray(data)
-						? data
-						: []
-				);
+				let fetched = Array.isArray(data.purchases)
+					? data.purchases
+					: Array.isArray(data)
+					? data
+					: [];
+				if (!fetched || fetched.length === 0) {
+					fetched = mockPurchases;
+				}
+				setPurchases(fetched);
 			} catch {
-				setPurchases([]); // Defensive: set to empty array on error
+				setPurchases(mockPurchases); // Show mock data on error
 			}
 		};
 		fetchPurchases();
@@ -332,13 +354,23 @@ const Purchase = () => {
 												: "-"}
 										</td>
 										<td className="py-2">
-											<button
-												onClick={() => handleEditClick(purchase)}
-												className="text-blue-600 hover:underline mr-2"
-											>
-												Edit
-											</button>
-											{/* You can add delete action here */}
+											<div className="flex items-center space-x-2">
+												<button
+													onClick={() => handleEditClick(purchase)}
+													className="text-blue-600 hover:text-blue-800 p-2 rounded-lg hover:bg-blue-50 transition-all duration-200"
+													title="Edit"
+												>
+													<Edit className="w-4 h-4" />
+												</button>
+												<button
+													// TODO: Implement delete logic
+													className="text-red-600 hover:text-red-800 p-2 rounded-lg hover:bg-red-50 transition-all duration-200"
+													title="Delete"
+													disabled
+												>
+													<Trash2 className="w-4 h-4" />
+												</button>
+											</div>
 										</td>
 									</tr>
 								);

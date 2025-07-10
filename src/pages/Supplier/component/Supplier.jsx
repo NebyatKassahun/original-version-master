@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { getBaseUrl } from "../../../Utils/baseApi";
+import { Edit, Trash2 } from "lucide-react";
 
 const SUPPLIER_API = getBaseUrl() + "/api/suppliers/";
 
@@ -272,12 +273,14 @@ const Supplier = () => {
 												<button
 													onClick={() => handleEditSave(id)}
 													className="bg-green-600 text-white px-2 py-1 rounded hover:bg-green-700"
+													disabled={loading}
 												>
 													Save
 												</button>
 												<button
 													onClick={() => setEditId(null)}
 													className="bg-gray-400 text-white px-2 py-1 rounded hover:bg-gray-500"
+													disabled={loading}
 												>
 													Cancel
 												</button>
@@ -289,19 +292,23 @@ const Supplier = () => {
 											<td>{s.lastName}</td>
 											<td>{s.email}</td>
 											<td>{s.phone}</td>
-											<td className="space-x-2">
-												<button
-													onClick={() => handleEditClick(s)}
-													className="bg-yellow-500 text-white px-2 py-1 rounded hover:bg-yellow-600"
-												>
-													Edit
-												</button>
-												<button
-													onClick={() => handleDelete(id)}
-													className="bg-red-600 text-white px-2 py-1 rounded hover:bg-red-700"
-												>
-													Delete
-												</button>
+											<td>
+												<div className="flex items-center space-x-2">
+													<button
+														onClick={() => handleEditClick(s)}
+														className="text-blue-600 hover:text-blue-800 p-2 rounded-lg hover:bg-blue-50 transition-all duration-200"
+														disabled={loading}
+													>
+														<Edit className="w-4 h-4" />
+													</button>
+													<button
+														onClick={() => handleDelete(id)}
+														className="text-red-600 hover:text-red-800 p-2 rounded-lg hover:bg-red-50 transition-all duration-200"
+														disabled={loading}
+													>
+														<Trash2 className="w-4 h-4" />
+													</button>
+												</div>
 											</td>
 										</>
 									)}
