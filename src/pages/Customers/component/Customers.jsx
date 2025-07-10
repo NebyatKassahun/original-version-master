@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
+import { getBaseUrl } from "../../../Utils/baseApi";
 
-const API_URL = "https://stockmanagementbackend.onrender.com/api/customers";
+const API_URL = getBaseUrl() + "/api/customers";
 
 const Customers = () => {
 	const [customers, setCustomers] = useState([]);

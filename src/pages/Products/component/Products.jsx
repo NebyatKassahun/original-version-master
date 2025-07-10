@@ -5,14 +5,14 @@ import {
 	Plus,
 	Edit,
 	Trash2,
-	Filter,
+	// Filter,
 	Star,
 	TrendingUp,
 	Package,
 	AlertTriangle,
 } from "lucide-react";
 
-const API_URL = "https://stockmanagementbackend.onrender.com/api/product/";
+const API_URL = "http://localhost:3000/api/product/";
 
 const Products = () => {
 	const [products, setProducts] = useState([]);
@@ -138,25 +138,26 @@ const Products = () => {
 			price: product?.price || 0,
 			quantity: product?.quantity || 0,
 			description: product?.description || "",
-			imageUrl: product?.imageUrl || "",
 		});
 
 		const handleSubmit = (e) => {
 			e.preventDefault();
 			const token = localStorage.getItem("token");
-
 			const method = product ? "put" : "post";
-			const url = product ? `${API_URL}/${product.productId}` : API_URL;
+			const url = product ? `${API_URL}${product.productId}` : API_URL;
 
 			axios[method](url, formData, {
 				headers: {
 					Authorization: `Bearer ${token}`,
+					"Content-Type": "application/json",
 				},
 			})
 				.then((res) => {
 					if (product) {
 						setProducts((prev) =>
-							prev.map((p) => (p.id === product.productId ? res.data : p))
+							prev.map((p) =>
+								p.productId === product.productId ? res.data : p
+							)
 						);
 					} else {
 						setProducts((prev) => [...prev, res.data]);
@@ -312,11 +313,12 @@ const Products = () => {
 								</option>
 							))}
 						</select>
+						{/* Uncomment to add filter button */}
 
-						<button className="flex items-center space-x-2 px-4 py-3 border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors duration-200">
+						{/* <button className="flex items-center space-x-2 px-4 py-3 border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors duration-200">
 							<Filter className="w-4 h-4" />
 							<span>Filter</span>
-						</button>
+						</button> */}
 					</div>
 				</div>
 			</div>
@@ -538,7 +540,7 @@ const Products = () => {
 			</div>
 
 			{/* Low Stock Alert */}
-			{products.some((p) => p.quantity <= 10) && (
+			{/* {products.some((p) => p.quantity <= 10) && (
 				<div className="bg-gradient-to-r from-red-50 to-orange-50 border border-red-200 rounded-2xl p-6">
 					<div className="flex items-start space-x-4">
 						<div className="flex-shrink-0">
@@ -557,7 +559,7 @@ const Products = () => {
 						</div>
 					</div>
 				</div>
-			)}
+			)} */}
 
 			{/* Modals */}
 			{showAddModal && <ProductModal onClose={() => setShowAddModal(false)} />}

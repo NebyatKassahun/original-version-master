@@ -28,11 +28,10 @@ const initialReports = [
 	{ id: 4, title: "Customers", value: 200, color: "#ef4444" },
 ];
 
-const SALES_API = "https://stockmanagementbackend.onrender.com/api/sales";
-const PRODUCT_API = "https://stockmanagementbackend.onrender.com/api/product";
-const PURCHASE_API = "https://stockmanagementbackend.onrender.com/api/purchase";
-const CUSTOMERS_API =
-	"https://stockmanagementbackend.onrender.com/api/customers";
+const SALES_API = "https://localhost:3000/api/sales";
+const PRODUCT_API = "https://localhost:3000/api/product";
+const PURCHASE_API = "https://localhost:3000/api/purchase";
+const CUSTOMERS_API = "https://localhost:3000/api/customers";
 
 const Reports = () => {
 	const [reports, setReports] = useState(initialReports);

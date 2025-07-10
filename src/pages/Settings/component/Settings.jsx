@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import axios from "axios";
+import { getBaseUrl } from "../../../Utils/baseApi";
 
 const Settings = () => {
 	const [profile, setProfile] = useState({
@@ -35,7 +36,7 @@ const Settings = () => {
 		const userId = getUserIdFromToken(token);
 		if (!userId) return;
 		axios
-			.get(`https://stockmanagementbackend.onrender.com/api/users/${userId}`, {
+			.get(getBaseUrl() + `/api/users/${userId}`, {
 				headers: { Authorization: `Bearer ${token}` },
 			})
 			.then((res) => {
@@ -58,12 +59,12 @@ const Settings = () => {
 						profilePictureUrl &&
 						(profilePictureUrl.startsWith("http")
 							? profilePictureUrl
-							: `https://stockmanagementbackend.onrender.com${profilePictureUrl}`),
+							: getBaseUrl() + `${profilePictureUrl}`),
 					createdAt: createdAt || "",
 				});
 			})
 			.catch((err) => {
-				setMessage("Failed to fetch user data.",err);
+				setMessage("Failed to fetch user data.", err);
 			});
 	}, []);
 
@@ -119,7 +120,7 @@ const Settings = () => {
 		if (profile.photo) formData.append("profilePicture", profile.photo);
 		try {
 			const res = await axios.put(
-				`https://stockmanagementbackend.onrender.com/api/users/${userId}`,
+				getBaseUrl() + `/api/users/${userId}`,
 				formData,
 				{
 					headers: {
@@ -139,7 +140,7 @@ const Settings = () => {
 					updatedUser.profilePictureUrl &&
 					(updatedUser.profilePictureUrl.startsWith("http")
 						? updatedUser.profilePictureUrl
-						: `https://stockmanagementbackend.onrender.com${updatedUser.profilePictureUrl}`),
+						: getBaseUrl() + `${updatedUser.profilePictureUrl}`),
 				password: "",
 				photo: null,
 			}));

@@ -1,6 +1,7 @@
 import React, { createContext, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { jwtDecode } from "jwt-decode";
+import { getBaseUrl } from "../Utils/baseApi";
 
 // Create the Auth context
 const AuthContext = createContext();
@@ -40,14 +41,11 @@ export const AuthProvider = ({ children }) => {
 	// Log in user and store token & user info
 	const login = async (email, password) => {
 		try {
-			const response = await fetch(
-				"https://stockmanagementbackend.onrender.com/api/users/login",
-				{
-					method: "POST",
-					headers: { "Content-Type": "application/json" },
-					body: JSON.stringify({ email, password }),
-				}
-			);
+			const response = await fetch(getBaseUrl() + "/api/users/login", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ email, password }),
+			});
 			if (!response.ok) {
 				return false;
 			}
@@ -86,10 +84,9 @@ export const AuthProvider = ({ children }) => {
 	const refreshUser = async () => {
 		if (!token) return;
 		try {
-			const response = await fetch(
-				"https://stockmanagementbackend.onrender.com/api/users/me",
-				{ headers: { Authorization: `Bearer ${token}` } }
-			);
+			const response = await fetch(getBaseUrl() + "/api/users/me", {
+				headers: { Authorization: `Bearer ${token}` },
+			});
 			if (response.ok) {
 				const data = await response.json();
 				setUser(data.user);

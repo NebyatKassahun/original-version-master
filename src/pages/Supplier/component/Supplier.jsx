@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
+import { getBaseUrl } from "../../../Utils/baseApi";
 
-const SUPPLIER_API =
-	"https://stockmanagementbackend.onrender.com/api/suppliers/";
+const SUPPLIER_API = getBaseUrl() + "/api/suppliers/";
 
 const Supplier = () => {
 	const [suppliers, setSuppliers] = useState([]);

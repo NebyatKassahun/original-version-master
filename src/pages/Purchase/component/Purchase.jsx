@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from "react";
+import { getBaseUrl } from "../../../Utils/baseApi";
 
-const PRODUCT_API = "https://stockmanagementbackend.onrender.com/api/product/";
-const PURCHASE_API =
-	"https://stockmanagementbackend.onrender.com/api/purchase/";
+const PRODUCT_API = getBaseUrl() + "/api/product/";
+const PURCHASE_API = getBaseUrl() + "/api/purchase/";
 
 const Purchase = () => {
 	const [products, setProducts] = useState([]);
@@ -16,6 +16,7 @@ const Purchase = () => {
 		supplierId: "",
 	});
 	const [error, setError] = useState("");
+	const [editingPurchase, setEditingPurchase] = useState(null);
 
 	// Fetch products
 	useEffect(() => {
@@ -63,12 +64,9 @@ const Purchase = () => {
 		const fetchSuppliers = async () => {
 			try {
 				const token = localStorage.getItem("token");
-				const res = await fetch(
-					"https://stockmanagementbackend.onrender.com/api/suppliers/",
-					{
-						headers: token ? { Authorization: `Bearer ${token}` } : {},
-					}
-				);
+				const res = await fetch(getBaseUrl() + "/api/suppliers/", {
+					headers: token ? { Authorization: `Bearer ${token}` } : {},
+				});
 				const data = await res.json();
 				setSuppliers((data.suppliers || data).filter((s) => !s.isDeleted));
 			} catch {
@@ -82,8 +80,22 @@ const Purchase = () => {
 		setForm({ ...form, [e.target.name]: e.target.value });
 	};
 
-	// Make a purchase and update product quantity
-	const handleAddPurchase = async (e) => {
+	const handleEditClick = (purchase) => {
+		setEditingPurchase(purchase);
+		setForm({
+			productId:
+				purchase.productId ||
+				purchase.product?._id ||
+				purchase.product?.id ||
+				"",
+			quantity: purchase.quantity || purchase.purchaseQuantity || "",
+			price: purchase.price || purchase.purchasePrice || "",
+			date: (purchase.date || purchase.createdAt || "").slice(0, 10),
+			supplierId: purchase.supplierId || "",
+		});
+	};
+
+	const handleAddOrEditPurchase = async (e) => {
 		e.preventDefault();
 		setError("");
 
@@ -96,29 +108,56 @@ const Purchase = () => {
 		}
 
 		try {
-			const res = await fetch(PURCHASE_API, {
-				method: "POST",
-				headers: {
-					"Content-Type": "application/json",
-					...(token ? { Authorization: `Bearer ${token}` } : {}),
-				},
-				body: JSON.stringify({
-					products: [
-						{
-							productId,
-							quantity: Number(quantity),
-							purchasePrice: Number(price),
+			let res;
+			if (editingPurchase) {
+				// Update existing purchase
+				res = await fetch(
+					`${PURCHASE_API}${editingPurchase.purchaseId || editingPurchase.id}`,
+					{
+						method: "PUT",
+						headers: {
+							"Content-Type": "application/json",
+							...(token ? { Authorization: `Bearer ${token}` } : {}),
 						},
-					],
-					date,
-					supplierId,
-				}),
-			});
+						body: JSON.stringify({
+							products: [
+								{
+									productId,
+									quantity: Number(quantity),
+									purchasePrice: Number(price),
+								},
+							],
+							date,
+							supplierId,
+						}),
+					}
+				);
+			} else {
+				// Add new purchase
+				res = await fetch(PURCHASE_API, {
+					method: "POST",
+					headers: {
+						"Content-Type": "application/json",
+						...(token ? { Authorization: `Bearer ${token}` } : {}),
+					},
+					body: JSON.stringify({
+						products: [
+							{
+								productId,
+								quantity: Number(quantity),
+								purchasePrice: Number(price),
+							},
+						],
+						date,
+						supplierId,
+					}),
+				});
+			}
 
 			if (!res.ok) {
 				const errorData = await res.json();
-				console.error("Purchase creation failed:", errorData);
-				throw new Error(errorData.message || "Purchase creation failed");
+				console.error("Purchase save failed:", errorData);
+				throw new Error(errorData.message || "Purchase save failed");
 			}
 
 			// Refresh purchases and products
@@ -141,7 +180,7 @@ const Purchase = () => {
 					: productsData
 			);
 
-			// Reset form
+			// Reset form and editing state
 			setForm({
 				productId: "",
 				quantity: "",
@@ -149,10 +188,22 @@ const Purchase = () => {
 				date: "",
 				supplierId: "",
 			});
+			setEditingPurchase(null);
 		} catch (err) {
 			console.error(err);
-			setError("Could not add purchase.");
+			setError("Could not save purchase.");
 		}
+	};
+
+	const handleCancelEdit = () => {
+		setEditingPurchase(null);
+		setForm({
+			productId: "",
+			quantity: "",
+			price: "",
+			date: "",
+			supplierId: "",
+		});
 	};
 
 	return (
@@ -161,7 +212,7 @@ const Purchase = () => {
 			<div className="bg-white rounded-xl shadow-lg p-6">
 				{error && <div className="mb-4 text-red-600 font-medium">{error}</div>}
 				<form
-					onSubmit={handleAddPurchase}
+					onSubmit={handleAddOrEditPurchase}
 					className="mb-6 flex flex-col md:flex-row gap-4"
 				>
 					<select
@@ -225,8 +276,17 @@ const Purchase = () => {
 						type="submit"
 						className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
 					>
-						Add Purchase
+						{editingPurchase ? "Update Purchase" : "Add Purchase"}
 					</button>
+					{editingPurchase && (
+						<button
+							type="button"
+							onClick={handleCancelEdit}
+							className="bg-gray-300 text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-400 ml-2"
+						>
+							Cancel
+						</button>
+					)}
 				</form>
 				<table className="w-full text-left">
 					<thead>
@@ -272,7 +332,13 @@ const Purchase = () => {
 												: "-"}
 										</td>
 										<td className="py-2">
-											{/* You can add delete/edit actions here */}
+											<button
+												onClick={() => handleEditClick(purchase)}
+												className="text-blue-600 hover:underline mr-2"
+											>
+												Edit
+											</button>
+											{/* You can add delete action here */}
 										</td>
 									</tr>
 								);
