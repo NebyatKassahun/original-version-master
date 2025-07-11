@@ -11,9 +11,24 @@ import {
 	LogOut,
 	Menu,
 	Layers,
+	Tag,
+	Truck,
 } from "lucide-react";
 import { useApp } from "../../Context/AppContext";
 import { useAuth } from "../../hooks/useAuth";
+import { getBaseUrl, normalizeImageUrl } from "../../Utils/baseApi";
+// import { useEffect } from "react";
+
+function joinUrl(base, path) {
+	if (!path) return '';
+	if (path.startsWith('http')) return path;
+	return base.replace(/\/+$/, '') + '/' + path.replace(/^\/+/, '');
+}
+
+function cleanProfilePictureUrl(url) {
+	if (!url) return '';
+	return url.replace('/images/images/', '/images/');
+}
 
 const menuItems = [
 	{
@@ -25,6 +40,11 @@ const menuItems = [
 		icon: Package,
 		label: "Products",
 		path: "/products",
+	},
+	{
+		icon: Tag,
+		label: "Category",
+		path: "/category",
 	},
 	{
 		icon: ShoppingCart,
@@ -42,7 +62,7 @@ const menuItems = [
 		path: "/customers",
 	},
 	{
-		icon: Users,
+		icon: Truck,
 		label: "Suppliers",
 		path: "/suppliers",
 	},
@@ -66,6 +86,19 @@ const Sidebar = () => {
 	const toggleSidebar = () => {
 		dispatch({ type: "TOGGLE_SIDEBAR" });
 	};
+
+	// useEffect(() => {
+	// 	if (!state.sidebarCollapsed) {
+	// 		document.body.style.overflow = "hidden";
+	// 	} else {
+	// 		document.body.style.overflow = "auto";
+	// 	}
+
+	// 	// Cleanup in case component unmounts
+	// 	return () => {
+	// 		document.body.style.overflow = "auto";
+	// 	};
+	// }, [state.sidebarCollapsed]);
 
 	const handleLogout = () => {
 		logout();
@@ -100,7 +133,11 @@ const Sidebar = () => {
 			</div>
 
 			{/* Navigation */}
-			<nav className="mt-6 px-3 flex-1 overflow-y-auto">
+			<nav
+				className={`mt-6 px-3 flex-1 ${
+					state.sidebarCollapsed ? "overflow-y-visible" : "overflow-y-auto"
+				}`}
+			>
 				<ul className="space-y-1">
 					{menuItems.map((item) => {
 						const Icon = item.icon;
@@ -149,12 +186,20 @@ const Sidebar = () => {
 				{/* User Info */}
 				{!state.sidebarCollapsed && user && (
 					<div className="flex items-center space-x-3 mb-4 p-3 rounded-xl bg-slate-700/30">
-						<div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-teal-500 rounded-full flex items-center justify-center shadow-md">
-							<span className="text-sm font-bold text-white">
-								{user.firstName[0]}
-								{user.lastName[0]}
-							</span>
-						</div>
+						{user?.profilePictureUrl ? (
+							<img
+								src={normalizeImageUrl(joinUrl(getBaseUrl(), cleanProfilePictureUrl(user.profilePictureUrl)))}
+								alt="Profile"
+								className="w-10 h-10 rounded-full object-cover border border-slate-600 shadow-md"
+								onError={e => { e.target.onerror = null; e.target.style.display = 'none'; }}
+							/>
+						) : (
+							<div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-teal-500 rounded-full flex items-center justify-center shadow-md">
+								<span className="text-sm font-bold text-white">
+									{(user?.firstName?.[0] || '') + (user?.lastName?.[0] || '')}
+								</span>
+							</div>
+						)}
 						<div className="flex-1 min-w-0">
 							<p className="text-sm font-semibold text-white truncate">
 								{user.firstName} {user.lastName}

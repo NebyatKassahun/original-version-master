@@ -1,390 +1,487 @@
 import React, { useState, useEffect } from "react";
 import { getBaseUrl } from "../../../Utils/baseApi";
-import { Edit, Trash2 } from "lucide-react";
+import { Edit, Trash2, Plus} from "lucide-react";
 
-const PRODUCT_API = getBaseUrl() + "/api/product/";
 const PURCHASE_API = getBaseUrl() + "/api/purchase/";
-
-const mockPurchases = [
-	{
-		purchaseId: "mock1",
-		supplierId: "supplier1",
-		product: { name: "Mock Product A", _id: "product1" },
-		quantity: 10,
-		price: 50,
-		date: "2025-07-01T00:00:00.000Z",
-	},
-	{
-		purchaseId: "mock2",
-		supplierId: "supplier2",
-		product: { name: "Mock Product B", _id: "product2" },
-		quantity: 5,
-		price: 30,
-		date: "2025-07-05T00:00:00.000Z",
-	},
-];
+const SUPPLIER_API = getBaseUrl() + "/api/suppliers/";
+const PRODUCT_API = getBaseUrl() + "/api/product/";
 
 const Purchase = () => {
-	const [products, setProducts] = useState([]);
 	const [purchases, setPurchases] = useState([]);
+	const [products, setProducts] = useState([]);
 	const [suppliers, setSuppliers] = useState([]);
-	const [form, setForm] = useState({
-		productId: "",
-		quantity: "",
-		price: "",
-		date: "",
-		supplierId: "",
-	});
+	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState("");
+	const [success, setSuccess] = useState("");
+	const [showModal, setShowModal] = useState(false);
 	const [editingPurchase, setEditingPurchase] = useState(null);
+	const [form, setForm] = useState({
+		supplierId: "",
+		productPurchases: [
+			{
+				productId: "",
+				quantity: "",
+				purchasePrice: "",
+			},
+		],
+	});
 
-	// Fetch products
+	// Fetch all data on component mount
 	useEffect(() => {
-		const fetchProducts = async () => {
-			try {
-				const token = localStorage.getItem("token");
-				const res = await fetch(PRODUCT_API, {
-					headers: token ? { Authorization: `Bearer ${token}` } : {},
-				});
-				const data = await res.json();
-				setProducts(Array.isArray(data.products) ? data.products : data);
-			} catch {
-				setError("Could not load products.");
-			}
-		};
-		fetchProducts();
+		fetchData();
 	}, []);
 
-	// Fetch purchases
-	useEffect(() => {
-		const fetchPurchases = async () => {
-			try {
-				const token = localStorage.getItem("token");
-				const res = await fetch(PURCHASE_API, {
-					headers: token ? { Authorization: `Bearer ${token}` } : {},
-				});
-				if (!res.ok) throw new Error("Could not fetch purchases");
-				const data = await res.json();
-				let fetched = Array.isArray(data.purchases)
-					? data.purchases
-					: Array.isArray(data)
-					? data
-					: [];
-				if (!fetched || fetched.length === 0) {
-					fetched = mockPurchases;
-				}
-				setPurchases(fetched);
-			} catch {
-				setPurchases(mockPurchases); // Show mock data on error
-			}
-		};
-		fetchPurchases();
-	}, []);
+	const fetchData = async () => {
+		setLoading(true);
+		setError("");
+		try {
+			const token = localStorage.getItem("token");
+			const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
-	// Fetch suppliers
-	useEffect(() => {
-		const fetchSuppliers = async () => {
-			try {
-				const token = localStorage.getItem("token");
-				const res = await fetch(getBaseUrl() + "/api/suppliers/", {
-					headers: token ? { Authorization: `Bearer ${token}` } : {},
-				});
-				const data = await res.json();
-				setSuppliers((data.suppliers || data).filter((s) => !s.isDeleted));
-			} catch {
-				setError("Could not load suppliers.");
-			}
-		};
-		fetchSuppliers();
-	}, []);
+			// Fetch purchases
+			const purchasesRes = await fetch(PURCHASE_API, { headers });
+			const purchasesData = await purchasesRes.json();
+			setPurchases(Array.isArray(purchasesData) ? purchasesData : []);
 
-	const handleFormChange = (e) => {
-		setForm({ ...form, [e.target.name]: e.target.value });
+			// Fetch products
+			const productsRes = await fetch(PRODUCT_API, { headers });
+			const productsData = await productsRes.json();
+			setProducts(Array.isArray(productsData) ? productsData : []);
+
+			// Fetch suppliers
+			const suppliersRes = await fetch(SUPPLIER_API, { headers });
+			const suppliersData = await suppliersRes.json();
+			setSuppliers(Array.isArray(suppliersData) ? suppliersData : []);
+		} catch (err) {
+			setError("Failed to load data");
+			console.error(err);
+		} finally {
+			setLoading(false);
+		}
 	};
 
-	const handleEditClick = (purchase) => {
-		setEditingPurchase(purchase);
+	const handleFormChange = (e) => {
+		const { name, value } = e.target;
+		setForm({ ...form, [name]: value });
+	};
+
+	const handleProductPurchaseChange = (index, field, value) => {
+		const updated = [...form.productPurchases];
+		updated[index] = { ...updated[index], [field]: value };
+		setForm({ ...form, productPurchases: updated });
+	};
+
+	const addProductPurchase = () => {
 		setForm({
-			productId:
-				purchase.productId ||
-				purchase.product?._id ||
-				purchase.product?.id ||
-				"",
-			quantity: purchase.quantity || purchase.purchaseQuantity || "",
-			price: purchase.price || purchase.purchasePrice || "",
-			date: (purchase.date || purchase.createdAt || "").slice(0, 10),
-			supplierId: purchase.supplierId || "",
+			...form,
+			productPurchases: [
+				...form.productPurchases,
+				{ productId: "", quantity: "", purchasePrice: "" },
+			],
 		});
 	};
 
-	const handleAddOrEditPurchase = async (e) => {
+	const removeProductPurchase = (index) => {
+		if (form.productPurchases.length > 1) {
+			const updated = form.productPurchases.filter((_, i) => i !== index);
+			setForm({ ...form, productPurchases: updated });
+		}
+	};
+
+	const handleSubmit = async (e) => {
 		e.preventDefault();
+		setLoading(true);
 		setError("");
+		setSuccess("");
 
-		const token = localStorage.getItem("token");
-		const { productId, quantity, price, date, supplierId } = form;
-
-		if (!productId || !quantity || !price || !date || !supplierId) {
-			setError("All fields are required.");
+		if (!form.supplierId || form.productPurchases.some(pp => !pp.productId || !pp.quantity || !pp.purchasePrice)) {
+			setError("All fields are required");
+			setLoading(false);
 			return;
 		}
 
 		try {
-			let res;
-			if (editingPurchase) {
-				// Update existing purchase
-				res = await fetch(
-					`${PURCHASE_API}${editingPurchase.purchaseId || editingPurchase.id}`,
-					{
-						method: "PUT",
-						headers: {
-							"Content-Type": "application/json",
-							...(token ? { Authorization: `Bearer ${token}` } : {}),
-						},
-						body: JSON.stringify({
-							products: [
-								{
-									productId,
-									quantity: Number(quantity),
-									purchasePrice: Number(price),
-								},
-							],
-							date,
-							supplierId,
-						}),
-					}
-				);
-			} else {
-				// Add new purchase
-				res = await fetch(PURCHASE_API, {
-					method: "POST",
-					headers: {
-						"Content-Type": "application/json",
-						...(token ? { Authorization: `Bearer ${token}` } : {}),
-					},
-					body: JSON.stringify({
-						products: [
-							{
-								productId,
-								quantity: Number(quantity),
-								purchasePrice: Number(price),
-							},
-						],
-						date,
-						supplierId,
-					}),
-				});
-			}
+			const token = localStorage.getItem("token");
+			const purchaseData = {
+				supplierId: form.supplierId,
+				customerId: form.supplierId, // Using supplier as customer for now
+				productPurchases: form.productPurchases.map(pp => ({
+					productId: pp.productId,
+					purchaseQuantity: Number(pp.quantity),
+					purchasePrice: Number(pp.purchasePrice),
+				})),
+			};
+
+			console.log("Sending purchase data:", purchaseData);
+
+			const url = editingPurchase 
+				? `${PURCHASE_API}${editingPurchase.purchaseId}`
+				: PURCHASE_API;
+			const method = editingPurchase ? "PUT" : "POST";
+
+			const res = await fetch(url, {
+				method,
+				headers: {
+					"Content-Type": "application/json",
+					...(token ? { Authorization: `Bearer ${token}` } : {}),
+				},
+				body: JSON.stringify(purchaseData),
+			});
 
 			if (!res.ok) {
 				const errorData = await res.json();
-				console.error("Purchase save failed:", errorData);
-				throw new Error(errorData.message || "Purchase save failed");
+				console.log("Error response:", errorData);
+				throw new Error(errorData.message || "Failed to save purchase");
 			}
 
-			// Refresh purchases and products
-			const [purchasesRes, productsRes] = await Promise.all([
-				fetch(PURCHASE_API, {
-					headers: token ? { Authorization: `Bearer ${token}` } : {},
-				}),
-				fetch(PRODUCT_API, {
-					headers: token ? { Authorization: `Bearer ${token}` } : {},
-				}),
-			]);
-
-			const purchasesData = await purchasesRes.json();
-			setPurchases(Array.isArray(purchasesData) ? purchasesData : []);
-
-			const productsData = await productsRes.json();
-			setProducts(
-				Array.isArray(productsData.products)
-					? productsData.products
-					: productsData
-			);
-
-			// Reset form and editing state
-			setForm({
-				productId: "",
-				quantity: "",
-				price: "",
-				date: "",
-				supplierId: "",
-			});
-			setEditingPurchase(null);
+			setSuccess(editingPurchase ? "Purchase updated successfully!" : "Purchase created successfully!");
+			resetForm();
+			await fetchData(); // Refresh the list
 		} catch (err) {
-			console.error(err);
-			setError("Could not save purchase.");
+			setError(err.message);
+		} finally {
+			setLoading(false);
 		}
 	};
 
-	const handleCancelEdit = () => {
-		setEditingPurchase(null);
+	const handleEdit = (purchase) => {
+		setEditingPurchase(purchase);
+		const productPurchases = purchase.productPurchases || [];
 		setForm({
-			productId: "",
-			quantity: "",
-			price: "",
-			date: "",
-			supplierId: "",
+			supplierId: purchase.supplierId || "",
+			productPurchases: productPurchases.map(pp => ({
+				productId: pp.productId || "",
+				quantity: pp.purchaseQuantity?.toString() || "",
+				purchasePrice: pp.purchasePrice?.toString() || "",
+			})),
 		});
+		setShowModal(true);
 	};
 
+	const handleDelete = async (purchaseId) => {
+		if (!window.confirm("Are you sure you want to delete this purchase?"))
+			return;
+
+		setLoading(true);
+		setError("");
+		try {
+			const token = localStorage.getItem("token");
+			const res = await fetch(`${PURCHASE_API}${purchaseId}`, {
+				method: "DELETE",
+				headers: {
+					"Content-Type": "application/json",
+					...(token ? { Authorization: `Bearer ${token}` } : {}),
+				},
+			});
+
+			if (!res.ok) {
+				const errorData = await res.json();
+				throw new Error(errorData.message || "Failed to delete purchase");
+			}
+
+			setSuccess("Purchase deleted successfully!");
+			await fetchData(); // Refresh the list
+		} catch (err) {
+			setError(err.message);
+		} finally {
+			setLoading(false);
+		}
+	};
+
+	const resetForm = () => {
+		setForm({
+			supplierId: "",
+			productPurchases: [
+				{ productId: "", quantity: "", purchasePrice: "" },
+			],
+		});
+		setEditingPurchase(null);
+		setShowModal(false);
+	};
+
+	const getSupplierName = (supplierId) => {
+		const supplier = suppliers.find((s) => s.customerId === supplierId);
+		return supplier ? `${supplier.firstName} ${supplier.lastName}` : "-";
+	};
+
+	const getProductName = (productPurchases) => {
+		if (!productPurchases || !productPurchases.length) return "-";
+		const product = products.find(
+			(p) => p.productId === productPurchases[0].productId
+		);
+		return product ? product.name : "-";
+	};
+
+	const getTotalQuantity = (productPurchases) => {
+		if (!productPurchases || !productPurchases.length) return 0;
+		return productPurchases.reduce((sum, pp) => sum + pp.purchaseQuantity, 0);
+	};
+
+	const getTotalPrice = (productPurchases) => {
+		if (!productPurchases || !productPurchases.length) return 0;
+		return productPurchases.reduce(
+			(sum, pp) => sum + pp.purchaseQuantity * pp.purchasePrice,
+			0
+		);
+	};
+
+	if (loading && purchases.length === 0) {
+		return (
+			<div className="flex justify-center items-center min-h-[60vh]">
+				<div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+			</div>
+		);
+	}
+
 	return (
-		<div className="space-y-6">
-			<h1 className="text-2xl font-semibold text-gray-900">Purchases</h1>
-			<div className="bg-white rounded-xl shadow-lg p-6">
-				{error && <div className="mb-4 text-red-600 font-medium">{error}</div>}
-				<form
-					onSubmit={handleAddOrEditPurchase}
-					className="mb-6 flex flex-col md:flex-row gap-4"
+		<div className="space-y-6 min-h-full p-6">
+			{/* Header */}
+			<div className="flex items-center justify-between">
+				<div>
+					<h1 className="text-3xl font-bold text-gray-900">Purchases</h1>
+					<p className="text-gray-600 mt-1">
+						Manage your purchase orders and inventory
+					</p>
+				</div>
+				<button
+					onClick={() => setShowModal(true)}
+					className="bg-gradient-to-r from-blue-600 to-blue-700 text-white px-6 py-3 rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all duration-200 flex items-center space-x-2 shadow-lg transform hover:scale-105"
 				>
-					<select
-						name="supplierId"
-						value={form.supplierId || ""}
-						onChange={handleFormChange}
-						className="border px-3 py-2 rounded-lg flex-1"
-						required
-					>
-						<option value="">Select Supplier</option>
-						{suppliers.map((s) => (
-							<option key={s.customerId || s._id} value={s.customerId || s._id}>
-								{s.firstName} {s.lastName}
-							</option>
-						))}
-					</select>
-					<select
-						name="productId"
-						value={form.productId}
-						onChange={handleFormChange}
-						className="border px-3 py-2 rounded-lg flex-1"
-						required
-					>
-						<option value="">Select Product</option>
-						{products.map((p) => (
-							<option key={p._id || p.id || p.name} value={p._id || p.id}>
-								{p.name}
-							</option>
-						))}
-					</select>
-					<input
-						type="number"
-						name="quantity"
-						value={form.quantity}
-						onChange={handleFormChange}
-						placeholder="Quantity"
-						className="border px-3 py-2 rounded-lg flex-1"
-						required
-						min="1"
-					/>
-					<input
-						type="number"
-						name="price"
-						value={form.price}
-						onChange={handleFormChange}
-						placeholder="Price Bought"
-						className="border px-3 py-2 rounded-lg flex-1"
-						required
-						min="0"
-						step="0.01"
-					/>
-					<input
-						type="date"
-						name="date"
-						value={form.date}
-						onChange={handleFormChange}
-						className="border px-3 py-2 rounded-lg flex-1"
-						required
-					/>
-					<button
-						type="submit"
-						className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
-					>
-						{editingPurchase ? "Update Purchase" : "Add Purchase"}
-					</button>
-					{editingPurchase && (
-						<button
-							type="button"
-							onClick={handleCancelEdit}
-							className="bg-gray-300 text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-400 ml-2"
-						>
-							Cancel
-						</button>
-					)}
-				</form>
-				<table className="w-full text-left">
-					<thead>
-						<tr>
-							<th className="py-2">Supplier</th>
-							<th className="py-2">Product</th>
-							<th className="py-2">Quantity</th>
-							<th className="py-2">Price Bought</th>
-							<th className="py-2">Date</th>
-							<th className="py-2">Action</th>
-						</tr>
-					</thead>
-					<tbody>
-						{Array.isArray(purchases) && purchases.length > 0 ? (
-							purchases.map((purchase) => {
-								const supplier = suppliers.find(
-									(s) =>
-										s.customerId === purchase.supplierId ||
-										s._id === purchase.supplierId
-								);
-								return (
+					<Plus className="w-5 h-5" />
+					<span className="font-medium">Add Purchase</span>
+				</button>
+			</div>
+
+			{/* Messages */}
+			{error && (
+				<div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+					{error}
+				</div>
+			)}
+			{success && (
+				<div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg">
+					{success}
+				</div>
+			)}
+
+			{/* Purchases Table */}
+			<div className="bg-white rounded-2xl shadow-lg overflow-hidden border border-gray-100">
+				<div className="overflow-x-auto">
+					<table className="w-full">
+						<thead className="bg-gray-50 border-b border-gray-200">
+							<tr>
+								<th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+									Supplier
+								</th>
+								<th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+									Products
+								</th>
+								<th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+									Total Quantity
+								</th>
+								<th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+									Total Price
+								</th>
+								<th className="px-6 py-4 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
+									Actions
+								</th>
+							</tr>
+						</thead>
+						<tbody className="bg-white divide-y divide-gray-200">
+							{purchases.length > 0 ? (
+								purchases.map((purchase) => (
 									<tr
-										key={purchase.purchaseId || purchase.id}
-										className="border-t"
+										key={purchase.purchaseId}
+										className="hover:bg-gray-50 transition-colors duration-200"
 									>
-										<td className="py-2">
-											{supplier
-												? `${supplier.firstName} ${supplier.lastName}`
-												: "-"}
+										<td className="px-6 py-4 whitespace-nowrap">
+											<div className="font-semibold text-gray-900">
+												{getSupplierName(purchase.supplierId)}
+											</div>
 										</td>
-										<td className="py-2">
-											{purchase.product?.name || purchase.productName || "-"}
+										<td className="px-6 py-4 whitespace-nowrap">
+											<div className="text-sm text-gray-900">
+												{getProductName(purchase.productPurchases)}
+											</div>
 										</td>
-										<td className="py-2">
-											{purchase.quantity || purchase.purchaseQuantity || "-"}
+										<td className="px-6 py-4 whitespace-nowrap">
+											<span className="inline-flex px-3 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
+												{getTotalQuantity(purchase.productPurchases)}
+											</span>
 										</td>
-										<td className="py-2">
-											{purchase.price || purchase.purchasePrice || "-"}
+										<td className="px-6 py-4 whitespace-nowrap text-gray-900 font-semibold text-red-500">
+											{getTotalPrice(
+												purchase.productPurchases
+											).toLocaleString()}{" "}
+											ETB
 										</td>
-										<td className="py-2">
-											{purchase.date || purchase.createdAt
-												? (purchase.date || purchase.createdAt).slice(0, 10)
-												: "-"}
-										</td>
-										<td className="py-2">
-											<div className="flex items-center space-x-2">
+										<td className="px-6 py-4 whitespace-nowrap text-right text-sm">
+											<div className="flex items-center justify-end space-x-2">
 												<button
-													onClick={() => handleEditClick(purchase)}
+													onClick={() => handleEdit(purchase)}
 													className="text-blue-600 hover:text-blue-800 p-2 rounded-lg hover:bg-blue-50 transition-all duration-200"
 													title="Edit"
 												>
 													<Edit className="w-4 h-4" />
 												</button>
 												<button
-													// TODO: Implement delete logic
+													onClick={() => handleDelete(purchase.purchaseId)}
 													className="text-red-600 hover:text-red-800 p-2 rounded-lg hover:bg-red-50 transition-all duration-200"
 													title="Delete"
-													disabled
 												>
 													<Trash2 className="w-4 h-4" />
 												</button>
 											</div>
 										</td>
 									</tr>
-								);
-							})
-						) : (
-							<tr>
-								<td colSpan={6} className="text-center text-gray-500 py-4">
-									No purchases recorded.
-								</td>
-							</tr>
-						)}
-					</tbody>
-				</table>
+								))
+							) : (
+								<tr>
+									<td colSpan={5} className="text-center py-12">
+										<div className="text-gray-500">
+											<p className="text-lg">No purchases found</p>
+											<p className="text-sm">
+												Start by adding your first purchase
+											</p>
+										</div>
+									</td>
+								</tr>
+							)}
+						</tbody>
+					</table>
+				</div>
 			</div>
+
+			{/* Add/Edit Modal */}
+			{showModal && (
+				<div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm">
+					<div className="relative bg-white rounded-2xl w-full max-w-lg max-h-[95vh] overflow-y-auto shadow-2xl p-6 z-60">
+						<button
+							className="absolute top-4 right-4 text-gray-400 hover:text-gray-700 text-2xl"
+							onClick={resetForm}
+						>
+							&times;
+						</button>
+						<h2 className="text-2xl font-bold mb-6 text-gray-800">
+							{editingPurchase ? "Edit Purchase" : "Add New Purchase"}
+						</h2>
+						<form onSubmit={handleSubmit} className="space-y-4">
+							<div>
+								<label className="block text-sm font-medium text-gray-700 mb-1">
+									Supplier
+								</label>
+								<select
+									name="supplierId"
+									value={form.supplierId}
+									onChange={handleFormChange}
+									className="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+									required
+								>
+									<option key="default-supplier" value="">
+										Select Supplier
+									</option>
+									{suppliers.map((supplier) => (
+										<option
+											key={supplier.customerId}
+											value={supplier.customerId}
+										>
+											{supplier.firstName} {supplier.lastName}
+										</option>
+									))}
+								</select>
+							</div>
+							{/* Product Purchases Cards */}
+							{form.productPurchases.map((pp, idx) => (
+								<div key={idx} className="bg-gray-50 p-4 rounded-xl border border-gray-200 mb-4">
+									<div className="flex items-center justify-between mb-4">
+										<h3 className="text-lg font-semibold text-gray-800">Product {idx + 1}</h3>
+										{form.productPurchases.length > 1 && (
+											<button
+												type="button"
+												onClick={() => removeProductPurchase(idx)}
+												className="text-red-600 hover:text-red-800 p-2 rounded-lg hover:bg-red-50 transition-all duration-200"
+											>
+												<Trash2 className="w-4 h-4" />
+											</button>
+										)}
+									</div>
+									<div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+										<div>
+											<label className="block text-sm font-medium text-gray-700 mb-1">Product</label>
+											<select
+												value={pp.productId}
+												onChange={e => handleProductPurchaseChange(idx, "productId", e.target.value)}
+												className="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+												required
+											>
+												<option key="default-product" value="">Select Product</option>
+												{products.map((product) => (
+													<option key={product.productId} value={product.productId}>
+														{product.name}
+													</option>
+												))}
+											</select>
+										</div>
+										<div>
+											<label className="block text-sm font-medium text-gray-700 mb-1">Quantity</label>
+											<input
+												type="number"
+												value={pp.quantity}
+												onChange={e => handleProductPurchaseChange(idx, "quantity", e.target.value)}
+												className="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+												required
+												min="1"
+											/>
+										</div>
+										<div>
+											<label className="block text-sm font-medium text-gray-700 mb-1">Purchase Price</label>
+											<input
+												type="number"
+												value={pp.purchasePrice}
+												onChange={e => handleProductPurchaseChange(idx, "purchasePrice", e.target.value)}
+												className="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+												required
+												min="0"
+												step="0.01"
+											/>
+										</div>
+									</div>
+								</div>
+							))}
+							<div className="flex items-center space-x-4">
+								<button
+									type="button"
+									onClick={addProductPurchase}
+									className="bg-gray-600 text-white px-4 py-2 rounded-xl hover:bg-gray-700 transition-all duration-200 flex items-center space-x-2"
+								>
+									<Plus className="w-4 h-4" />
+									<span>Add Another Product</span>
+								</button>
+							</div>
+							<div className="flex gap-2 mt-6">
+								<button
+									type="submit"
+									disabled={loading}
+									className="flex-1 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50"
+								>
+									{loading
+										? "Saving..."
+										: editingPurchase
+										? "Update"
+										: "Create"}
+								</button>
+								<button
+									type="button"
+									onClick={resetForm}
+									className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
+								>
+									Cancel
+								</button>
+							</div>
+						</form>
+					</div>
+				</div>
+			)}
 		</div>
 	);
 };

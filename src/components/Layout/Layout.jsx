@@ -12,7 +12,7 @@ const Layout = ({ children }) => {
       <div className={`flex-1 flex flex-col overflow-hidden transition-all duration-300 ${state.sidebarCollapsed ? 'ml-16' : 'ml-64'
         }`}>
         <Header />
-        <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-50 p-6">
+        <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-50">
           {children}
         </main>
       </div>
